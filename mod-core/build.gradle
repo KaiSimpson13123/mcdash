@@ -1,0 +1,112 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.17.20'
+    id 'maven-publish'
+}
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven {
+        name = 'BMCLAPI'
+        url = 'https://bmclapi2.bangbang93.com/maven'
+    }
+    mavenCentral()
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+}
+
+configurations {
+    embed {
+        transitive = true
+    }
+    implementation.extendsFrom(embed)
+}
+
+dependencies {
+    // Target Platform
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Fabric API
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Logging API (Provided at runtime by Minecraft)
+    compileOnly "org.slf4j:slf4j-api:2.0.16"
+
+    // LuckPerms API (Soft dependency: compileOnly)
+    compileOnly "net.luckperms:api:${project.luckperms_version}"
+
+    // Embedded Web Server & Dependencies (Javalin, Jetty 11, Kotlin stdlib, Jackson, BCrypt)
+    embed "io.javalin:javalin:${project.javalin_version}"
+    embed "at.favre.lib:bcrypt:${project.bcrypt_version}"
+    embed "at.favre.lib:bytes:1.6.1"
+    embed "com.fasterxml.jackson.core:jackson-databind:${project.jackson_version}"
+    embed "com.fasterxml.jackson.core:jackson-core:${project.jackson_version}"
+    embed "com.fasterxml.jackson.core:jackson-annotations:${project.jackson_version}"
+    embed "com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${project.jackson_version}"
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version,
+                "minecraft_version": project.minecraft_version,
+                "loader_version": project.loader_version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 25
+    it.options.encoding = "UTF-8"
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.embed.collect { it.isDirectory() ? it : zipTree(it) }
+    } {
+        exclude 'META-INF/*.SF'
+        exclude 'META-INF/*.DSA'
+        exclude 'META-INF/*.RSA'
+        exclude 'META-INF/LICENSE*'
+        exclude 'META-INF/NOTICE*'
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'org/slf4j/**'
+    }
+}
+
+// Frontend integration tasks
+tasks.register('buildWeb', Exec) {
+    workingDir = file("${rootDir}/dashboard-web")
+    environment "PATH", "C:\\Users\\L27simpk\\tools\\node;" + System.getenv("PATH")
+    if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+        commandLine 'cmd', '/c', 'npm run build'
+    } else {
+        commandLine 'npm', 'run', 'build'
+    }
+}
+
+tasks.register('copyWebAssets', Copy) {
+    dependsOn 'buildWeb'
+    doFirst {
+        delete "${projectDir}/src/main/resources/public"
+    }
+    from "${rootDir}/dashboard-web/dist"
+    into "${projectDir}/src/main/resources/public"
+}
+
+processResources.dependsOn 'copyWebAssets'
+tasks.named('sourcesJar') {
+    dependsOn 'copyWebAssets'
+}

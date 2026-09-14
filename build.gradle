@@ -1,0 +1,8 @@
+plugins {
+    id 'base'
+}
+
+allprojects {
+    group = project.maven_group
+    version = project.mod_version
+}
