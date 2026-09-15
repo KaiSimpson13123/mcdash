@@ -198,14 +198,12 @@ public class AuthController {
             return;
         }
 
-        if (currentPassword != null && !currentPassword.isEmpty()) {
-            if (!authService.verifyUser(loggedInUser, currentPassword)) {
-                ctx.status(HttpStatus.BAD_REQUEST).json(Map.of(
-                        "error", "incorrect_current_password",
-                        "message", "Current password does not match."
-                ));
-                return;
-            }
+        if (currentPassword == null || currentPassword.isEmpty() || !authService.verifyUser(loggedInUser, currentPassword)) {
+            ctx.status(HttpStatus.BAD_REQUEST).json(Map.of(
+                    "error", "incorrect_current_password",
+                    "message", "Current password does not match."
+            ));
+            return;
         }
 
         boolean success = authService.changeUserPassword(loggedInUser, currentPassword, newPassword);

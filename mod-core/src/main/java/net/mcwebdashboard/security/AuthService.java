@@ -49,20 +49,20 @@ public class AuthService {
             String sudoHash = config.getSudoPasswordHash();
             if (sudoHash != null && !sudoHash.trim().isEmpty()) {
                 BCrypt.Result result = BCrypt.verifyer().verify(rawPassword.toCharArray(), sudoHash);
-                if (result.verified) return true;
+                return result.verified;
             }
-            // Fallback to admin setup password if sudo hash not yet set
+            // Fallback to admin setup password only if sudo hash not yet initialized
             String adminHash = config.getPasswordHash();
             if (adminHash != null && !adminHash.trim().isEmpty()) {
                 BCrypt.Result result = BCrypt.verifyer().verify(rawPassword.toCharArray(), adminHash);
-                if (result.verified) return true;
+                return result.verified;
             }
-            return "sudo".equals(rawPassword);
+            return false;
         }
 
         // 2. Configured admin user authentication
         String configuredUser = config.getUsername();
-        if (u.equalsIgnoreCase(configuredUser)) {
+        if (u.equalsIgnoreCase(configuredUser) || ("admin".equalsIgnoreCase(u) && (configuredUser == null || configuredUser.trim().isEmpty() || "admin".equalsIgnoreCase(configuredUser)))) {
             String hash = config.getPasswordHash();
             if (hash == null || hash.trim().isEmpty()) {
                 return false;
@@ -84,9 +84,7 @@ public class AuthService {
         config.setUsername(username.trim());
         config.setPasswordHash(hash);
         config.setSudoUsername("sudo");
-        if (config.getSudoPasswordHash() == null || config.getSudoPasswordHash().trim().isEmpty()) {
-            config.setSudoPasswordHash(hash);
-        }
+        config.setSudoPasswordHash(hash);
         boolean saved = configManager.save();
         if (saved) {
             LOGGER.info("Setup completed successfully for user: {} (and sudo user ready)", username.trim());
@@ -106,18 +104,26 @@ public class AuthService {
             config.setUsername(newUsername.trim());
         }
         if (newPassword != null && newPassword.length() >= 6) {
-            config.setPasswordHash(hashPassword(newPassword));
+            String newHash = hashPassword(newPassword);
+            config.setPasswordHash(newHash);
+            if ("sudo".equalsIgnoreCase(config.getUsername())) {
+                config.setSudoPasswordHash(newHash);
+            }
         }
 
         return configManager.save();
     }
 
     public boolean updateSudoPassword(String newPassword) {
-        if (newPassword == null || newPassword.length() < 4) {
+        if (newPassword == null || newPassword.length() < 6) {
             return false;
         }
         DashboardConfig config = configManager.getConfig();
-        config.setSudoPasswordHash(hashPassword(newPassword));
+        String newHash = hashPassword(newPassword);
+        config.setSudoPasswordHash(newHash);
+        if ("sudo".equalsIgnoreCase(config.getUsername())) {
+            config.setPasswordHash(newHash);
+        }
         return configManager.save();
     }
 
@@ -126,7 +132,11 @@ public class AuthService {
             return false;
         }
         DashboardConfig config = configManager.getConfig();
-        config.setPasswordHash(hashPassword(newPassword));
+        String newHash = hashPassword(newPassword);
+        config.setPasswordHash(newHash);
+        if ("sudo".equalsIgnoreCase(config.getUsername())) {
+            config.setSudoPasswordHash(newHash);
+        }
         return configManager.save();
     }
 
@@ -140,9 +150,8 @@ public class AuthService {
         }
         DashboardConfig config = configManager.getConfig();
         String configuredAdmin = config.getUsername();
-        if (configuredAdmin == null || configuredAdmin.trim().isEmpty() || u.equalsIgnoreCase(configuredAdmin.trim())) {
-            config.setPasswordHash(hashPassword(newPassword));
-            return configManager.save();
+        if (configuredAdmin == null || configuredAdmin.trim().isEmpty() || u.equalsIgnoreCase(configuredAdmin.trim()) || "admin".equalsIgnoreCase(u)) {
+            return updateAdminPassword(newPassword);
         }
         return false;
     }
@@ -152,10 +161,8 @@ public class AuthService {
             return false;
         }
         String u = username.trim();
-        if (currentPassword != null && !currentPassword.isEmpty()) {
-            if (!verifyUser(u, currentPassword)) {
-                return false;
-            }
+        if (currentPassword == null || currentPassword.isEmpty() || !verifyUser(u, currentPassword)) {
+            return false;
         }
         return updatePassword(u, newPassword);
     }
