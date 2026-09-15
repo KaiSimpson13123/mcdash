@@ -120,6 +120,133 @@ public class PlayerTrackerService {
         return player != null ? serializePlayer(player) : null;
     }
 
+    public Map<String, Object> getFullPlayerDetails(UUID uuid) {
+        if (server == null || server.getPlayerList() == null) {
+            return null;
+        }
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+        return player != null ? serializeFullPlayer(player) : null;
+    }
+
+    public Map<String, Object> serializeFullPlayer(ServerPlayer player) {
+        Map<String, Object> data = serializePlayer(player);
+        if (player == null) return data;
+
+        // Position & Dimension
+        Map<String, Object> pos = new LinkedHashMap<>();
+        pos.put("x", Math.round(player.getX() * 100.0) / 100.0);
+        pos.put("y", Math.round(player.getY() * 100.0) / 100.0);
+        pos.put("z", Math.round(player.getZ() * 100.0) / 100.0);
+        pos.put("yaw", Math.round(player.getYRot() * 10.0) / 10.0);
+        pos.put("pitch", Math.round(player.getXRot() * 10.0) / 10.0);
+        pos.put("dimension", player.level() != null ? player.level().dimension().identifier().toString() : "minecraft:overworld");
+        data.put("position", pos);
+
+        // Vitals
+        Map<String, Object> vitals = new LinkedHashMap<>();
+        vitals.put("health", Math.round(player.getHealth() * 10.0) / 10.0);
+        vitals.put("maxHealth", Math.round(player.getMaxHealth() * 10.0) / 10.0);
+        vitals.put("foodLevel", player.getFoodData() != null ? player.getFoodData().getFoodLevel() : 20);
+        vitals.put("saturationLevel", player.getFoodData() != null ? Math.round(player.getFoodData().getSaturationLevel() * 10.0) / 10.0 : 5.0);
+        vitals.put("experienceLevel", player.experienceLevel);
+        vitals.put("experienceProgress", Math.round(player.experienceProgress * 100.0) / 100.0);
+        vitals.put("totalExperience", player.totalExperience);
+        vitals.put("airSupply", player.getAirSupply());
+        vitals.put("maxAirSupply", player.getMaxAirSupply());
+        vitals.put("score", player.getScore());
+        data.put("vitals", vitals);
+
+        // Active Potion Effects
+        List<Map<String, Object>> effects = new ArrayList<>();
+        if (player.getActiveEffects() != null) {
+            for (var effect : player.getActiveEffects()) {
+                Map<String, Object> effMap = new LinkedHashMap<>();
+                String effectName = "";
+                try {
+                    effectName = net.minecraft.core.registries.BuiltInRegistries.MOB_EFFECT.getKey(effect.getEffect().value()).toString();
+                } catch (Throwable t) {
+                    effectName = effect.getDescriptionId();
+                }
+                effMap.put("name", effectName);
+                effMap.put("duration", effect.getDuration());
+                effMap.put("amplifier", effect.getAmplifier());
+                effMap.put("ambient", effect.isAmbient());
+                effMap.put("visible", effect.isVisible());
+                effects.add(effMap);
+            }
+        }
+        data.put("effects", effects);
+
+        // Inventory
+        Map<String, Object> inventoryData = new LinkedHashMap<>();
+        var inv = player.getInventory();
+        if (inv != null) {
+            inventoryData.put("selectedSlot", inv.getSelectedSlot());
+
+            // Equipment Armor
+            Map<String, Object> armor = new LinkedHashMap<>();
+            armor.put("boots", serializeItemStack(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.FEET), 0));
+            armor.put("leggings", serializeItemStack(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.LEGS), 1));
+            armor.put("chestplate", serializeItemStack(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST), 2));
+            armor.put("helmet", serializeItemStack(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD), 3));
+            inventoryData.put("armor", armor);
+
+            // Offhand
+            inventoryData.put("offhand", serializeItemStack(player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND), 40));
+
+            // Main inventory & Hotbar (36 storage slots: 0-8 hotbar, 9-35 main inventory)
+            List<Map<String, Object>> mainSlots = new ArrayList<>();
+            int maxSlots = Math.min(36, inv.getContainerSize());
+            for (int i = 0; i < maxSlots; i++) {
+                mainSlots.add(serializeItemStack(inv.getItem(i), i));
+            }
+            inventoryData.put("items", mainSlots);
+        }
+        data.put("inventory", inventoryData);
+
+        // Ender Chest (27 slots)
+        var enderChest = player.getEnderChestInventory();
+        List<Map<String, Object>> enderSlots = new ArrayList<>();
+        if (enderChest != null) {
+            for (int i = 0; i < enderChest.getContainerSize(); i++) {
+                enderSlots.add(serializeItemStack(enderChest.getItem(i), i));
+            }
+        }
+        data.put("enderChest", enderSlots);
+
+        return data;
+    }
+
+    private Map<String, Object> serializeItemStack(net.minecraft.world.item.ItemStack stack, int slotIndex) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        if (slotIndex >= 0) {
+            map.put("slot", slotIndex);
+        }
+        if (stack == null || stack.isEmpty()) {
+            map.put("empty", true);
+            return map;
+        }
+
+        map.put("empty", false);
+        map.put("count", stack.getCount());
+        map.put("maxStackSize", stack.getMaxStackSize());
+        map.put("name", stack.getHoverName().getString());
+
+        String itemId = "";
+        try {
+            itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        } catch (Throwable t) {
+            itemId = stack.getItem().toString();
+        }
+        map.put("id", itemId);
+
+        map.put("damage", stack.getDamageValue());
+        map.put("maxDamage", stack.getMaxDamage());
+        map.put("isDamaged", stack.isDamaged());
+
+        return map;
+    }
+
     public Map<String, Object> serializePlayer(ServerPlayer player) {
         Map<String, Object> data = new LinkedHashMap<>();
         UUID uuid = player.getUUID();

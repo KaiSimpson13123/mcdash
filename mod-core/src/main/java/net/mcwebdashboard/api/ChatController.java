@@ -42,7 +42,15 @@ public class ChatController {
         String trimmed = message.trim();
         // Support Minecraft color codes (&a -> §a, &c -> §c, etc.)
         String colored = trimmed.replaceAll("(?i)&([0-9a-fk-or])", "§$1");
-        String formatted = "§c[WebDashboard] §f" + colored;
+        String username = ctx.attribute("username");
+        if (username == null || username.trim().isEmpty()) {
+            username = "admin";
+        }
+        boolean isSudo = "sudo".equalsIgnoreCase(username.trim());
+        String roleName = isSudo ? "Sudo" : "Admin";
+        String broadcastPrefix = isSudo ? "§4[" + roleName + "] §c" + username : "§9[" + roleName + "] §b" + username;
+        String formatted = broadcastPrefix + "§f: " + colored;
+
         server.execute(() -> {
             if (server.getPlayerList() != null) {
                 server.getPlayerList().broadcastSystemMessage(Component.literal(formatted), false);
@@ -50,14 +58,18 @@ public class ChatController {
         });
 
         // Record CHAT event in ActivityTracker so it broadcasts over WebSocket to all web clients
+        String chatSenderTitle = "[" + roleName + "] " + username;
         if (activityTrackerService != null) {
-            activityTrackerService.recordEvent("CHAT", "Chat: [WebDashboard]", trimmed);
+            activityTrackerService.recordEvent("CHAT", "Chat: " + chatSenderTitle, trimmed);
         }
 
         ctx.json(Map.of(
                 "success", true,
                 "message", trimmed,
-                "sender", "[WebDashboard]",
+                "sender", username,
+                "role", isSudo ? "sudo" : "admin",
+                "isSudo", isSudo,
+                "senderTitle", chatSenderTitle,
                 "timestamp", Instant.now().toString()
         ));
     }

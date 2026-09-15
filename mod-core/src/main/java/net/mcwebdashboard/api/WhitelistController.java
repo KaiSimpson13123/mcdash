@@ -34,17 +34,61 @@ public class WhitelistController {
         app.post("/api/whitelist/toggle", this::handleToggleWhitelist);
         app.post("/api/whitelist/enable", this::handleToggleWhitelist);
 
-        // Explicitly block any removal attempts as required by specification:
-        // "Allow the user to manage the servers whitelists. But do not allow them to remove people, only add."
-        app.delete("/api/whitelist/{name}", this::handleBlockRemoval);
-        app.delete("/api/whitelist", this::handleBlockRemoval);
-        app.post("/api/whitelist/remove", this::handleBlockRemoval);
+        // Whitelist removal is privileged to 'sudo' users only
+        app.delete("/api/whitelist/{name}", this::handleRemovePlayer);
+        app.delete("/api/whitelist", this::handleRemovePlayer);
+        app.post("/api/whitelist/remove", this::handleRemovePlayer);
     }
 
-    private void handleBlockRemoval(Context ctx) {
-        ctx.status(HttpStatus.FORBIDDEN).json(Map.of(
-                "error", "removal_prohibited",
-                "message", "Removing players from the whitelist is disabled by server policy. Only additions are allowed."
+    private void handleRemovePlayer(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
+        if (server == null) {
+            ctx.status(HttpStatus.SERVICE_UNAVAILABLE).json(Map.of(
+                    "error", "server_not_ready",
+                    "message", "Minecraft server is not ready."
+            ));
+            return;
+        }
+
+        String playerName = ctx.pathParamMap().get("name");
+        if (playerName == null || playerName.trim().isEmpty()) {
+            try {
+                Map<String, Object> body = ctx.bodyAsClass(Map.class);
+                if (body != null) {
+                    if (body.containsKey("name")) playerName = String.valueOf(body.get("name"));
+                    else if (body.containsKey("player")) playerName = String.valueOf(body.get("player"));
+                    else if (body.containsKey("username")) playerName = String.valueOf(body.get("username"));
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (playerName == null || playerName.trim().isEmpty()) {
+            ctx.status(HttpStatus.BAD_REQUEST).json(Map.of(
+                    "error", "missing_player_name",
+                    "message", "Player name is required."
+            ));
+            return;
+        }
+
+        final String cleanName = playerName.trim();
+        server.execute(() -> {
+            try {
+                CommandSourceStack source = server.createCommandSourceStack();
+                server.getCommands().performPrefixedCommand(source, "whitelist remove " + cleanName);
+            } catch (Exception e) {
+                LOGGER.error("Failed to remove player from whitelist: {}", cleanName, e);
+            }
+        });
+
+        if (activityTrackerService != null) {
+            activityTrackerService.recordEvent("WHITELIST", "Whitelist Player Removed", cleanName + " was removed from the whitelist.");
+        }
+
+        ctx.json(Map.of(
+                "success", true,
+                "message", "Player " + cleanName + " removed from whitelist.",
+                "name", cleanName
         ));
     }
 
@@ -119,8 +163,6 @@ public class WhitelistController {
     }
 
     private void handleAddPlayer(Context ctx) {
-        if (!checkSudo(ctx)) return;
-
         if (server == null) {
             ctx.status(HttpStatus.SERVICE_UNAVAILABLE).json(Map.of(
                     "error", "server_not_ready",

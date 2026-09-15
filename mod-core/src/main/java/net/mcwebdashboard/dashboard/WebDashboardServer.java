@@ -42,6 +42,7 @@ public class WebDashboardServer {
     private ChatController chatController;
     private WhitelistController whitelistController;
     private ConsoleController consoleController;
+    private FileController fileController;
 
     public WebDashboardServer(
             ConfigManager configManager,
@@ -143,6 +144,9 @@ public class WebDashboardServer {
 
             consoleController = new ConsoleController(activityTrackerService);
             consoleController.registerRoutes(app);
+
+            fileController = new FileController(activityTrackerService);
+            fileController.registerRoutes(app);
 
             if (this.server != null) {
                 serverController.setServer(this.server);

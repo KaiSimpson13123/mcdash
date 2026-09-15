@@ -13,6 +13,7 @@ import { Performance } from './pages/Performance';
 import { Logs } from './pages/Logs';
 import { Activity } from './pages/Activity';
 import { Chat } from './pages/Chat';
+import { FileExplorer } from './pages/FileExplorer';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { SetupWizard } from './pages/SetupWizard';
@@ -67,6 +68,7 @@ export const App: React.FC = () => {
         <Route path="/logs" element={<Logs />} />
         <Route path="/activity" element={<Activity />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/files" element={<FileExplorer />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 

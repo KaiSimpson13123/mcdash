@@ -11,6 +11,18 @@ import {
   Send,
   RefreshCw,
   Wifi,
+  Eye,
+  X,
+  Heart,
+  Utensils,
+  Zap,
+  Compass,
+  Package,
+  Box,
+  Sparkles,
+  Shield,
+  Clock,
+  Activity,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
@@ -55,6 +67,12 @@ export const Players: React.FC = () => {
   const [actionReason, setActionReason] = useState('');
   const [teleportCoords, setTeleportCoords] = useState({ x: 0, y: 64, z: 0, dimension: 'minecraft:overworld' });
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Sudo-only Player Inspector State
+  const [inspectPlayer, setInspectPlayer] = useState<PlayerData | null>(null);
+  const [inspectDetails, setInspectDetails] = useState<any>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectTab, setInspectTab] = useState<'telemetry' | 'inventory' | 'enderchest'>('telemetry');
 
   const fetchPlayers = async () => {
     try {
@@ -120,6 +138,23 @@ export const Players: React.FC = () => {
     setActiveModal({ type, player });
   };
 
+  // Sudo player inspection handler
+  const handleInspectPlayer = async (player: PlayerData) => {
+    if (!isSudo) return; // Strict guard
+    setInspectPlayer(player);
+    setInspectLoading(true);
+    setInspectTab('telemetry');
+    try {
+      const details = await api.getPlayerFullDetails(player.uuid);
+      setInspectDetails(details);
+    } catch (e: any) {
+      addToast('error', e.message || 'Failed to load player telemetry data');
+      setInspectPlayer(null);
+    } finally {
+      setInspectLoading(false);
+    }
+  };
+
   const executeAction = async () => {
     if (!isSudo) {
       addToast('error', "Permission denied: Only the 'sudo' user can use action buttons.");
@@ -166,11 +201,66 @@ export const Players: React.FC = () => {
       setActiveModal({ type: null, player: null });
       setActionReason('');
       fetchPlayers();
+      // If currently inspecting this player, refresh their details
+      if (inspectPlayer && inspectPlayer.uuid === uuid) {
+        handleInspectPlayer(inspectPlayer);
+      }
     } catch (e: any) {
       addToast('error', e.message || 'Action failed');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // Helper component to render an inventory slot
+  const renderItemSlot = (item: any, slotNumber?: number, label?: string) => {
+    const isEmpty = !item || item.empty;
+    const count = item?.count || 0;
+    const name = item?.name || '';
+    const itemId = item?.id || '';
+    const isDamaged = item?.isDamaged;
+    const damage = item?.damage || 0;
+    const maxDamage = item?.maxDamage || 1;
+    const durabilityPct = maxDamage > 0 ? Math.max(0, 100 - (damage / maxDamage) * 100) : 100;
+
+    return (
+      <div
+        key={slotNumber !== undefined ? slotNumber : label}
+        title={!isEmpty ? `${name} (${itemId})${isDamaged ? ` - Durability: ${maxDamage - damage}/${maxDamage}` : ''}` : label || 'Empty Slot'}
+        className="w-12 h-12 bg-[#1e1e1f] border-2 border-[#141415] shadow-[inset_2px_2px_0_#0f0f10,inset_-2px_-2px_0_#38393a] flex flex-col items-center justify-center relative select-none hover:border-[#55ff55] transition-none group cursor-help"
+      >
+        {slotNumber !== undefined && (
+          <span className="absolute top-0.5 left-1 text-[8px] font-mono text-[#555] pointer-events-none">
+            {slotNumber}
+          </span>
+        )}
+        {label && isEmpty && (
+          <span className="text-[9px] font-mono text-[#555] uppercase text-center px-0.5">
+            {label}
+          </span>
+        )}
+        {!isEmpty && (
+          <>
+            <span className="text-[10px] font-mono font-bold text-white text-center leading-tight truncate px-0.5 max-w-[44px]">
+              {name.replace(/^minecraft:/, '')}
+            </span>
+            {count > 1 && (
+              <span className="absolute bottom-0.5 right-1 text-[10px] font-heading text-[#ffff55] drop-shadow-[1px_1px_0_#000]">
+                {count}
+              </span>
+            )}
+            {isDamaged && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#222]">
+                <div
+                  className={`h-full ${durabilityPct > 50 ? 'bg-[#55ff55]' : durabilityPct > 20 ? 'bg-[#ffaa00]' : 'bg-[#ff5555]'}`}
+                  style={{ width: `${durabilityPct}%` }}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -290,7 +380,19 @@ export const Players: React.FC = () => {
                 </tr>
               ) : (
                 paginatedPlayers.map((player) => (
-                  <tr key={player.uuid} className="hover:bg-[#28292a] bg-[#1e1e1f] transition-none">
+                  <tr
+                    key={player.uuid}
+                    onClick={() => {
+                      if (isSudo) {
+                        handleInspectPlayer(player);
+                      }
+                    }}
+                    className={`bg-[#1e1e1f] transition-none ${
+                      isSudo
+                        ? 'cursor-pointer hover:bg-[#28292a] group'
+                        : 'cursor-default'
+                    }`}
+                  >
                     {/* Player Name & Head */}
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2.5">
@@ -314,6 +416,11 @@ export const Players: React.FC = () => {
                               {player.isOp && (
                                 <span className="px-1 py-0.2 bg-[#a82323] text-white text-[9px] font-heading border border-[#5c1111]">
                                   OP
+                                </span>
+                              )}
+                              {isSudo && (
+                                <span className="opacity-0 group-hover:opacity-100 text-[10px] text-[#55ffff] font-heading ml-1.5 transition-none flex items-center gap-0.5">
+                                  <Eye className="w-3 h-3" /> INSPECT
                                 </span>
                               )}
                             </span>
@@ -355,7 +462,19 @@ export const Players: React.FC = () => {
 
                     {/* Action Controls */}
                     <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1 flex-wrap">
+                      <div
+                        className="flex items-center justify-end gap-1 flex-wrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {isSudo && (
+                          <button
+                            onClick={() => handleInspectPlayer(player)}
+                            className="mc-btn px-2 py-0.5 text-[10px] bg-[#1a2e40] text-[#55ffff] hover:border-[#55ffff]"
+                            title="Inspect full telemetry, inventory, cords, and vitals"
+                          >
+                            INSPECT
+                          </button>
+                        )}
                         <button
                           onClick={() => handleActionClick('teleport', player)}
                           className={`mc-btn px-2 py-0.5 text-[10px] ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
@@ -439,6 +558,386 @@ export const Players: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Sudo-Only Player Telemetry & Inventory Inspector Modal */}
+      {isSudo && inspectPlayer && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 select-none animate-fadeIn">
+          <div className="bg-[#2e2f30] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 bg-[#242425] border-b-4 border-[#141415] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <img
+                  src={`https://mc-heads.net/avatar/${inspectPlayer.username}/48`}
+                  alt={inspectPlayer.username}
+                  className="w-12 h-12 border-2 border-black pixelated bg-[#111112]"
+                  onError={(e: any) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-heading text-white tracking-wider flex items-center gap-2">
+                      {inspectPlayer.username}
+                    </h2>
+                    {inspectPlayer.isOp && (
+                      <span className="px-1.5 py-0.5 bg-[#a82323] text-white text-[10px] font-heading border border-[#5c1111]">
+                        OPERATOR
+                      </span>
+                    )}
+                    <span className="px-2 py-0.5 text-[10px] font-heading uppercase bg-[#1e3816] text-[#55ff55] border border-[#11240c]">
+                      {inspectPlayer.gameMode}
+                    </span>
+                    <span className="px-2 py-0.5 text-[10px] font-heading uppercase bg-[#421414] text-[#ffaa00] border border-[#ffaa00]">
+                      SUDO INSPECTOR
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-[#aaaaaa] mt-0.5">
+                    UUID: {inspectPlayer.uuid} · Latency: {inspectPlayer.ping}ms · Online: {formatDuration(inspectPlayer.onlineDuration)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setInspectPlayer(null);
+                  setInspectDetails(null);
+                }}
+                className="mc-btn p-1.5"
+                title="Close Inspector"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Navigation Tabs */}
+            <div className="px-4 pt-3 bg-[#242425] border-b-2 border-[#1e1e1f] flex items-center gap-2 overflow-x-auto">
+              <button
+                onClick={() => setInspectTab('telemetry')}
+                className={`px-3 py-1.5 text-xs font-heading flex items-center gap-1.5 transition-none ${
+                  inspectTab === 'telemetry'
+                    ? 'bg-[#3c8527] text-white border-t-2 border-x-2 border-[#5db53b]'
+                    : 'bg-[#313233] text-[#aaaaaa] hover:text-white border-t-2 border-x-2 border-[#1e1e1f]'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5" />
+                TELEMETRY & VITALS
+              </button>
+              <button
+                onClick={() => setInspectTab('inventory')}
+                className={`px-3 py-1.5 text-xs font-heading flex items-center gap-1.5 transition-none ${
+                  inspectTab === 'inventory'
+                    ? 'bg-[#3c8527] text-white border-t-2 border-x-2 border-[#5db53b]'
+                    : 'bg-[#313233] text-[#aaaaaa] hover:text-white border-t-2 border-x-2 border-[#1e1e1f]'
+                }`}
+              >
+                <Package className="w-3.5 h-3.5" />
+                PLAYER INVENTORY
+              </button>
+              <button
+                onClick={() => setInspectTab('enderchest')}
+                className={`px-3 py-1.5 text-xs font-heading flex items-center gap-1.5 transition-none ${
+                  inspectTab === 'enderchest'
+                    ? 'bg-[#3c8527] text-white border-t-2 border-x-2 border-[#5db53b]'
+                    : 'bg-[#313233] text-[#aaaaaa] hover:text-white border-t-2 border-x-2 border-[#1e1e1f]'
+                }`}
+              >
+                <Box className="w-3.5 h-3.5 text-[#ff55ff]" />
+                ENDER CHEST (27 SLOTS)
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 p-5 overflow-y-auto bg-[#1a1a1b] font-mono text-xs space-y-5">
+              {inspectLoading ? (
+                <div className="space-y-4 py-8">
+                  <div className="flex items-center justify-center gap-2 text-white font-heading text-sm">
+                    <RefreshCw className="w-5 h-5 animate-spin text-[#55ff55]" />
+                    <span>QUERYING LIVE TELEMETRY CHUNKS...</span>
+                  </div>
+                  <Skeleton className="h-24 w-full" />
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ) : !inspectDetails ? (
+                <div className="text-center py-12 text-[#ff5555]">
+                  Failed to query player data or player is no longer online.
+                </div>
+              ) : (
+                <>
+                  {/* TAB 1: TELEMETRY & VITALS */}
+                  {inspectTab === 'telemetry' && (
+                    <div className="space-y-4 animate-fadeIn">
+                      {/* Exact Coordinates Card */}
+                      <div className="p-4 bg-[#252526] border-2 border-[#141415] shadow-[inset_2px_2px_0_#38393a] space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#141415] pb-2">
+                          <h3 className="font-heading text-white text-xs flex items-center gap-2">
+                            <Compass className="w-4 h-4 text-[#55ff55]" />
+                            EXACT SPATIAL TELEMETRY
+                          </h3>
+                          <span className="text-[10px] font-heading px-2 py-0.5 bg-[#141415] text-[#55ffff] border border-[#333]">
+                            {inspectDetails.position?.dimension || 'OVERWORLD'}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-center">
+                          <div className="p-2 bg-[#1e1e1f] border border-[#141415]">
+                            <p className="text-[10px] font-heading text-[#888]">X COORDINATE</p>
+                            <p className="text-sm font-heading text-[#55ff55] mt-1">{inspectDetails.position?.x}</p>
+                          </div>
+                          <div className="p-2 bg-[#1e1e1f] border border-[#141415]">
+                            <p className="text-[10px] font-heading text-[#888]">Y (ELEVATION)</p>
+                            <p className="text-sm font-heading text-[#55ffff] mt-1">{inspectDetails.position?.y}</p>
+                          </div>
+                          <div className="p-2 bg-[#1e1e1f] border border-[#141415]">
+                            <p className="text-[10px] font-heading text-[#888]">Z COORDINATE</p>
+                            <p className="text-sm font-heading text-[#55ff55] mt-1">{inspectDetails.position?.z}</p>
+                          </div>
+                          <div className="p-2 bg-[#1e1e1f] border border-[#141415]">
+                            <p className="text-[10px] font-heading text-[#888]">YAW (ROTATION)</p>
+                            <p className="text-sm font-heading text-[#ffaa00] mt-1">{inspectDetails.position?.yaw}°</p>
+                          </div>
+                          <div className="p-2 bg-[#1e1e1f] border border-[#141415]">
+                            <p className="text-[10px] font-heading text-[#888]">PITCH (ANGLE)</p>
+                            <p className="text-sm font-heading text-[#ffaa00] mt-1">{inspectDetails.position?.pitch}°</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Vitals & Health Card */}
+                      <div className="p-4 bg-[#252526] border-2 border-[#141415] shadow-[inset_2px_2px_0_#38393a] space-y-3">
+                        <h3 className="font-heading text-white text-xs flex items-center gap-2 border-b border-[#141415] pb-2">
+                          <Heart className="w-4 h-4 text-[#ff5555]" />
+                          BIOMETRIC VITALS & SATURATION
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                          {/* Health */}
+                          <div className="p-3 bg-[#1e1e1f] border border-[#141415] space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-heading text-[#ff5555]">
+                              <span>HEALTH</span>
+                              <span>{inspectDetails.vitals?.health} / {inspectDetails.vitals?.maxHealth}</span>
+                            </div>
+                            <div className="w-full bg-[#111] h-3 border border-black">
+                              <div
+                                className="bg-[#ff5555] h-full transition-none"
+                                style={{ width: `${Math.min(100, (inspectDetails.vitals?.health / (inspectDetails.vitals?.maxHealth || 20)) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Food */}
+                          <div className="p-3 bg-[#1e1e1f] border border-[#141415] space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-heading text-[#ffaa00]">
+                              <span>HUNGER / FOOD</span>
+                              <span>{inspectDetails.vitals?.foodLevel} / 20</span>
+                            </div>
+                            <div className="w-full bg-[#111] h-3 border border-black">
+                              <div
+                                className="bg-[#ffaa00] h-full transition-none"
+                                style={{ width: `${(inspectDetails.vitals?.foodLevel / 20) * 100}%` }}
+                              />
+                            </div>
+                            <p className="text-[9px] text-[#888]">Saturation: {inspectDetails.vitals?.saturationLevel}</p>
+                          </div>
+
+                          {/* Experience */}
+                          <div className="p-3 bg-[#1e1e1f] border border-[#141415] space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-heading text-[#55ff55]">
+                              <span>XP LEVEL</span>
+                              <span>LVL {inspectDetails.vitals?.experienceLevel}</span>
+                            </div>
+                            <div className="w-full bg-[#111] h-3 border border-black">
+                              <div
+                                className="bg-[#55ff55] h-full transition-none"
+                                style={{ width: `${inspectDetails.vitals?.experienceProgress}%` }}
+                              />
+                            </div>
+                            <p className="text-[9px] text-[#888]">Total XP: {inspectDetails.vitals?.totalExperience}</p>
+                          </div>
+
+                          {/* Air Supply */}
+                          <div className="p-3 bg-[#1e1e1f] border border-[#141415] space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-heading text-[#55ffff]">
+                              <span>AIR SUPPLY</span>
+                              <span>{inspectDetails.vitals?.airSupply} / {inspectDetails.vitals?.maxAirSupply}</span>
+                            </div>
+                            <div className="w-full bg-[#111] h-3 border border-black">
+                              <div
+                                className="bg-[#55ffff] h-full transition-none"
+                                style={{ width: `${Math.max(0, (inspectDetails.vitals?.airSupply / (inspectDetails.vitals?.maxAirSupply || 300)) * 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Active Potion Effects */}
+                      <div className="p-4 bg-[#252526] border-2 border-[#141415] shadow-[inset_2px_2px_0_#38393a] space-y-2">
+                        <h3 className="font-heading text-white text-xs flex items-center gap-2 border-b border-[#141415] pb-2">
+                          <Sparkles className="w-4 h-4 text-[#ff55ff]" />
+                          ACTIVE STATUS EFFECTS ({inspectDetails.effects?.length || 0})
+                        </h3>
+                        {(!inspectDetails.effects || inspectDetails.effects.length === 0) ? (
+                          <p className="text-[#777] italic py-2">No active potion or status effects applied.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {inspectDetails.effects.map((eff: any, i: number) => (
+                              <div
+                                key={i}
+                                className="px-3 py-1.5 bg-[#1a1a1b] border-2 border-[#141415] flex items-center gap-2 text-xs"
+                              >
+                                <span className="font-heading text-[#ff55ff]">{eff.name}</span>
+                                <span className="text-[10px] text-[#ffff55] bg-[#333] px-1">Lvl {eff.amplifier + 1}</span>
+                                <span className="text-[10px] text-[#aaaaaa]">({Math.round(eff.duration / 20)}s)</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 2: PLAYER INVENTORY */}
+                  {inspectTab === 'inventory' && (
+                    <div className="space-y-4 animate-fadeIn">
+                      {/* Equipment Slots */}
+                      <div className="p-3 bg-[#252526] border-2 border-[#141415] shadow-[inset_2px_2px_0_#38393a] space-y-2">
+                        <p className="text-[11px] font-heading text-[#aaaaaa] uppercase tracking-wide">
+                          ARMOR & EQUIPMENT
+                        </p>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {renderItemSlot(inspectDetails.inventory?.armor?.helmet, undefined, 'HELMET')}
+                          {renderItemSlot(inspectDetails.inventory?.armor?.chestplate, undefined, 'CHEST')}
+                          {renderItemSlot(inspectDetails.inventory?.armor?.leggings, undefined, 'LEGS')}
+                          {renderItemSlot(inspectDetails.inventory?.armor?.boots, undefined, 'BOOTS')}
+                          <div className="border-l-2 border-[#141415] pl-3">
+                            {renderItemSlot(inspectDetails.inventory?.offhand, 40, 'OFFHAND')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Main 27 Storage Slots */}
+                      <div className="p-3 bg-[#252526] border-2 border-[#141415] shadow-[inset_2px_2px_0_#38393a] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-heading text-[#aaaaaa] uppercase tracking-wide">
+                            MAIN STORAGE (SLOTS 9 - 35)
+                          </p>
+                          <span className="text-[10px] text-[#888]">3 Rows × 9 Slots</span>
+                        </div>
+                        <div className="grid grid-cols-9 gap-1.5 p-2 bg-[#161617] border-2 border-[#141415]">
+                          {inspectDetails.inventory?.items?.slice(9, 36).map((item: any, idx: number) =>
+                            renderItemSlot(item, idx + 9)
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Hotbar Slots 0-8 */}
+                      <div className="p-3 bg-[#252526] border-2 border-[#141415] shadow-[inset_2px_2px_0_#38393a] space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-heading text-[#55ff55] uppercase tracking-wide flex items-center gap-2">
+                            <span>HOTBAR (SLOTS 0 - 8)</span>
+                            <span className="text-[10px] text-[#888]">
+                              Selected: Slot {inspectDetails.inventory?.selectedSlot}
+                            </span>
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-9 gap-1.5 p-2 bg-[#161617] border-2 border-[#141415]">
+                          {inspectDetails.inventory?.items?.slice(0, 9).map((item: any, idx: number) => {
+                            const isSelected = inspectDetails.inventory?.selectedSlot === idx;
+                            return (
+                              <div
+                                key={idx}
+                                className={isSelected ? 'ring-2 ring-[#55ff55] p-0.5' : ''}
+                              >
+                                {renderItemSlot(item, idx)}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: ENDER CHEST */}
+                  {inspectTab === 'enderchest' && (
+                    <div className="space-y-4 animate-fadeIn">
+                      <div className="p-4 bg-[#1e132b] border-2 border-[#3b1261] shadow-[inset_2px_2px_0_#531b87] space-y-3">
+                        <div className="flex items-center justify-between border-b border-[#3b1261] pb-2">
+                          <h3 className="font-heading text-white text-xs flex items-center gap-2">
+                            <Box className="w-4 h-4 text-[#ff55ff]" />
+                            PERSONAL ENDER CHEST CONTAINER
+                          </h3>
+                          <span className="text-[10px] font-mono text-[#d8b4fe]">
+                            27 Slots · Encrypted Cloud Vault
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-9 gap-1.5 p-3 bg-[#11071c] border-2 border-[#2b0c47]">
+                          {inspectDetails.enderChest?.map((item: any, idx: number) =>
+                            renderItemSlot(item, idx)
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer Quick Action Bar */}
+            <div className="p-3 bg-[#242425] border-t-4 border-[#141415] flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleActionClick('teleport', inspectPlayer)}
+                  className="mc-btn px-3 py-1 text-xs"
+                >
+                  TELEPORT
+                </button>
+                {inspectPlayer.isOp ? (
+                  <button
+                    onClick={() => handleActionClick('deop', inspectPlayer)}
+                    className="mc-btn px-3 py-1 text-xs"
+                  >
+                    REVOKE OP
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleActionClick('op', inspectPlayer)}
+                    className="mc-btn px-3 py-1 text-xs bg-[#3c8527] text-white"
+                  >
+                    GRANT OP
+                  </button>
+                )}
+                <button
+                  onClick={() => handleActionClick('kill', inspectPlayer)}
+                  className="mc-btn px-3 py-1 text-xs bg-[#a82323] text-white"
+                >
+                  KILL
+                </button>
+                <button
+                  onClick={() => handleActionClick('kick', inspectPlayer)}
+                  className="mc-btn px-3 py-1 text-xs"
+                >
+                  KICK
+                </button>
+                <button
+                  onClick={() => handleActionClick('ban', inspectPlayer)}
+                  className="mc-btn-danger px-3 py-1 text-xs"
+                >
+                  BAN
+                </button>
+              </div>
+
+              <button
+                onClick={() => {
+                  setInspectPlayer(null);
+                  setInspectDetails(null);
+                }}
+                className="mc-btn px-4 py-1 text-xs"
+              >
+                CLOSE INSPECTOR
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation & Teleport Modals */}
       {activeModal.type && activeModal.player && (

@@ -20,6 +20,7 @@ public class PlayerController {
 
     public void registerRoutes(Javalin app) {
         app.get("/api/players", this::handleGetPlayers);
+        app.get("/api/players/{uuid}/full", this::handleGetFullPlayer);
 
         app.post("/api/players/{uuid}/kick", this::handleKick);
         app.post("/api/players/{uuid}/ban", this::handleBan);
@@ -31,6 +32,24 @@ public class PlayerController {
 
     private void handleGetPlayers(Context ctx) {
         ctx.json(playerTrackerService.getOnlinePlayers());
+    }
+
+    private void handleGetFullPlayer(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
+        UUID uuid = parseUuid(ctx);
+        if (uuid == null) return;
+
+        Map<String, Object> details = playerTrackerService.getFullPlayerDetails(uuid);
+        if (details == null) {
+            ctx.status(HttpStatus.NOT_FOUND).json(Map.of(
+                    "error", "player_not_found",
+                    "message", "Player is not online or not found."
+            ));
+            return;
+        }
+
+        ctx.json(details);
     }
 
     private boolean checkSudo(Context ctx) {

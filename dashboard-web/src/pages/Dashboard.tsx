@@ -14,6 +14,7 @@ import {
   ExternalLink,
   RefreshCw,
   Plus,
+  Trash2,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -90,12 +91,10 @@ export const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const [removingPlayer, setRemovingPlayer] = useState<string | null>(null);
+
   const handleAddWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isSudo) {
-      addToast('error', "Permission denied: Only the 'sudo' user can use action buttons.");
-      return;
-    }
     const clean = newPlayerName.trim();
     if (!clean) return;
 
@@ -112,9 +111,26 @@ export const Dashboard: React.FC = () => {
     }
   };
 
+  const handleRemoveWhitelist = async (name: string) => {
+    if (!isSudo) {
+      addToast('error', "Permission denied: Only the 'sudo' operator can remove players from the whitelist.");
+      return;
+    }
+    setRemovingPlayer(name);
+    try {
+      await api.removeFromWhitelist(name);
+      addToast('success', `Removed ${name} from server whitelist!`);
+      await fetchWhitelist();
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to remove player from whitelist');
+    } finally {
+      setRemovingPlayer(null);
+    }
+  };
+
   const handleToggleWhitelist = async () => {
     if (!isSudo) {
-      addToast('error', "Permission denied: Only the 'sudo' user can use action buttons.");
+      addToast('error', "Permission denied: Only the 'sudo' operator can activate/deactivate the whitelist.");
       return;
     }
     setTogglingWhitelist(true);
@@ -342,54 +358,57 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={handleToggleWhitelist}
-            disabled={!isSudo || togglingWhitelist}
-            className={`px-4 py-2 text-xs font-heading ${
-              !isSudo
-                ? 'opacity-40 cursor-not-allowed mc-btn'
+          {isSudo ? (
+            <button
+              onClick={handleToggleWhitelist}
+              disabled={togglingWhitelist}
+              className={`px-4 py-2 text-xs font-heading ${
+                whitelist.enabled ? 'mc-btn-danger' : 'mc-btn-primary'
+              }`}
+            >
+              {togglingWhitelist
+                ? 'UPDATING...'
                 : whitelist.enabled
-                ? 'mc-btn-danger'
-                : 'mc-btn-primary'
-            }`}
-            title={!isSudo ? "Action buttons require the 'sudo' operator" : undefined}
-          >
-            {!isSudo
-              ? 'WHITELIST (SUDO LOCKED)'
-              : togglingWhitelist
-              ? 'UPDATING...'
-              : whitelist.enabled
-              ? 'DEACTIVATE WHITELIST'
-              : 'ACTIVATE WHITELIST'}
-          </button>
+                ? 'DEACTIVATE WHITELIST'
+                : 'ACTIVATE WHITELIST'}
+            </button>
+          ) : (
+            <div className="px-3 py-1.5 bg-[#1e1e1f] border border-[#2b2b2c] text-[11px] font-mono text-[#aaaaaa]">
+              TOGGLE RESTRICTED TO SUDO
+            </div>
+          )}
         </div>
 
-        {/* Policy Notice: Additions only, no removal */}
+        {/* Policy Notice */}
         <div className="p-2.5 bg-[#1a1a1b] border-2 border-[#141415] shadow-[inset_1px_1px_0_#0f0f10] flex items-center justify-between text-xs font-mono text-[#aaaaaa]">
           <span className="flex items-center gap-2 text-[#ffaa00]">
-            <span className="font-heading">POLICY:</span> Add-Only Mode Active (Removing players from whitelist is restricted by server rule).
+            <span className="font-heading">POLICY:</span>
+            {isSudo
+              ? 'Sudo Access Active: You have full privileges to add, remove, and toggle whitelist status.'
+              : 'Admin Access Active: You may add players to the whitelist. Deactivation and removal require sudo privileges.'}
           </span>
-          <span className="text-[10px] text-[#888] font-heading uppercase">Additions Allowed Only</span>
+          <span className="text-[10px] text-[#888] font-heading uppercase">
+            {isSudo ? 'Full Whitelist Control' : 'Add-Only Mode'}
+          </span>
         </div>
 
-        {/* Add Player to Whitelist Form */}
+        {/* Add Player to Whitelist Form - Open to both Admin and Sudo */}
         <form onSubmit={handleAddWhitelist} className="flex flex-col sm:flex-row items-center gap-2">
           <input
             type="text"
-            placeholder={!isSudo ? "Adding to whitelist requires the 'sudo' operator..." : "Enter player username to whitelist (e.g. Steve, Alex, Notch)..."}
+            placeholder="Enter player username to whitelist (e.g. Steve, Alex, Notch)..."
             value={newPlayerName}
             onChange={(e) => setNewPlayerName(e.target.value)}
-            disabled={!isSudo || addingPlayer}
-            className={`form-input flex-1 text-xs ${!isSudo ? 'opacity-60 cursor-not-allowed' : ''}`}
+            disabled={addingPlayer}
+            className="form-input flex-1 text-xs"
           />
           <button
             type="submit"
-            disabled={!isSudo || addingPlayer || !newPlayerName.trim()}
-            className={`button button-primary px-4 py-2 text-xs w-full sm:w-auto flex-shrink-0 ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
-            title={!isSudo ? "Action buttons require the 'sudo' operator" : undefined}
+            disabled={addingPlayer || !newPlayerName.trim()}
+            className="button button-primary px-4 py-2 text-xs w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-1"
           >
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            {!isSudo ? 'SUDO ONLY' : addingPlayer ? 'ADDING TO SERVER...' : 'ADD TO WHITELIST'}
+            <Plus className="w-3.5 h-3.5" />
+            {addingPlayer ? 'ADDING TO SERVER...' : 'ADD TO WHITELIST'}
           </button>
         </form>
 
@@ -413,9 +432,9 @@ export const Dashboard: React.FC = () => {
               {whitelist.entries.map((entry, idx) => (
                 <div
                   key={entry.uuid || entry.name || idx}
-                  className="p-2 bg-[#252526] border-2 border-[#1e1e1f] shadow-[inset_1px_1px_0_#38393a,inset_-1px_-1px_0_#141415] flex items-center justify-between"
+                  className="p-2 bg-[#252526] border-2 border-[#1e1e1f] shadow-[inset_1px_1px_0_#38393a,inset_-1px_-1px_0_#141415] flex items-center justify-between gap-2"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     <img
                       src={`https://mc-heads.net/avatar/${entry.name}/24`}
                       alt={entry.name}
@@ -424,7 +443,7 @@ export const Dashboard: React.FC = () => {
                         e.target.style.display = 'none';
                       }}
                     />
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-heading text-white truncate">{entry.name}</p>
                       {entry.uuid && (
                         <p className="text-[9px] font-mono text-[#888888] truncate" title={entry.uuid}>
@@ -434,9 +453,22 @@ export const Dashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <span className="text-[9px] px-1.5 py-0.5 bg-[#1e3816] text-[#55ff55] border border-[#11240c] font-heading flex-shrink-0">
-                    ALLOWED
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="text-[9px] px-1.5 py-0.5 bg-[#1e3816] text-[#55ff55] border border-[#11240c] font-heading">
+                      ALLOWED
+                    </span>
+                    {isSudo && (
+                      <button
+                        onClick={() => handleRemoveWhitelist(entry.name)}
+                        disabled={removingPlayer === entry.name}
+                        className="mc-btn-danger px-1.5 py-0.5 text-[9px] flex items-center gap-0.5 font-heading"
+                        title="Remove player from whitelist"
+                      >
+                        <Trash2 className="w-2.5 h-2.5" />
+                        {removingPlayer === entry.name ? '...' : 'REMOVE'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

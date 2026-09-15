@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Settings,
   Server,
+  FolderOpen,
 } from 'lucide-react';
 import { useWebSocketData as useWS } from '../contexts/WebSocketContext';
 
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { path: '/logs', label: 'Console / Logs', icon: Terminal },
   { path: '/activity', label: 'Activity', icon: Clock },
   { path: '/chat', label: 'Server Chat', icon: MessageSquare },
+  { path: '/files', label: 'File Explorer', icon: FolderOpen },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -135,7 +135,7 @@ export const api = {
       body: JSON.stringify({ message }),
     }),
 
-  // Whitelist (Add-only policy, no delete allowed)
+  // Whitelist
   getWhitelist: () =>
     request<{ enabled: boolean; count: number; entries: { name: string; uuid?: string }[] }>('/api/whitelist'),
   addToWhitelist: (name: string) =>
@@ -143,10 +143,75 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ name }),
     }),
+  removeFromWhitelist: (name: string) =>
+    request<{ success: boolean; message: string; name: string }>(`/api/whitelist/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    }),
   toggleWhitelist: (enabled: boolean) =>
     request<{ success: boolean; enabled: boolean; message: string }>('/api/whitelist/toggle', {
       method: 'POST',
       body: JSON.stringify({ enabled }),
+    }),
+
+  // Player Full Details (Sudo privileged)
+  getPlayerFullDetails: (uuid: string) =>
+    request<any>(`/api/players/${uuid}/full`),
+
+  // File Explorer
+  listFiles: (path?: string) => {
+    const q = path ? `?path=${encodeURIComponent(path)}` : '';
+    return request<{
+      currentPath: string;
+      parentPath: string | null;
+      canWrite: boolean;
+      items: Array<{
+        name: string;
+        path: string;
+        isDirectory: boolean;
+        size: number;
+        lastModified: string;
+        extension: string;
+      }>;
+    }>(`/api/files/list${q}`);
+  },
+  readFile: (path: string) =>
+    request<{
+      name: string;
+      path: string;
+      content: string;
+      size: number;
+      lastModified: string;
+      canWrite: boolean;
+    }>(`/api/files/read?path=${encodeURIComponent(path)}`),
+  downloadFileUrl: (path: string) => `/api/files/download?path=${encodeURIComponent(path)}`,
+  saveFile: (path: string, content: string) =>
+    request<{ success: boolean; message: string; path: string }>('/api/files/save', {
+      method: 'POST',
+      body: JSON.stringify({ path, content }),
+    }),
+  uploadFile: (dirPath: string, file: File) => {
+    const formData = new FormData();
+    formData.append('path', dirPath);
+    formData.append('file', file);
+    return request<{ success: boolean; message: string; name: string; path: string }>('/api/files/upload', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  deleteFile: (path: string) =>
+    request<{ success: boolean; message: string; path: string }>('/api/files/delete', {
+      method: 'POST',
+      body: JSON.stringify({ path }),
+    }),
+  createFileOrDir: (payload: { path: string; name: string; isDirectory: boolean }) =>
+    request<{ success: boolean; message: string; path: string }>('/api/files/create', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  renameFile: (payload: { path: string; newName: string }) =>
+    request<{ success: boolean; message: string; path: string }>('/api/files/rename', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 
   // Console Execution (privileged to sudo user)
