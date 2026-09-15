@@ -16,7 +16,7 @@ import {
 import { useWebSocketData, ActivityItem } from '../contexts/WebSocketContext';
 import { api } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
-import { formatTime } from '../services/format';
+import { formatTime, sanitizeCoordinates } from '../services/format';
 
 export const Activity: React.FC = () => {
   const { liveActivity } = useWebSocketData();
@@ -169,12 +169,12 @@ export const Activity: React.FC = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-minecraft text-white font-bold">{evt.title}</span>
+                      <span className="text-xs font-minecraft text-white font-bold">{sanitizeCoordinates(evt.title)}</span>
                       <span className="px-1.5 py-0.5 bg-[#181818] border border-[#333333] text-[9px] font-minecraft text-[#aaaaaa] uppercase">
                         {evt.category}
                       </span>
                     </div>
-                    <p className="text-xs text-[#b0b0b0] mt-1 font-minecraft font-mono">{evt.description}</p>
+                    <p className="text-xs text-[#b0b0b0] mt-1 font-minecraft font-mono">{sanitizeCoordinates(evt.description)}</p>
                   </div>
                 </div>
 

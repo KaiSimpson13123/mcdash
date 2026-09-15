@@ -106,7 +106,21 @@ public class WhitelistController {
         ctx.json(response);
     }
 
+    private boolean checkSudo(Context ctx) {
+        String username = ctx.attribute("username");
+        if (username == null || !"sudo".equalsIgnoreCase(username.trim())) {
+            ctx.status(HttpStatus.FORBIDDEN).json(Map.of(
+                    "error", "permission_denied",
+                    "message", "Permission denied: Only the 'sudo' user is permitted to use action buttons."
+            ));
+            return false;
+        }
+        return true;
+    }
+
     private void handleAddPlayer(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         if (server == null) {
             ctx.status(HttpStatus.SERVICE_UNAVAILABLE).json(Map.of(
                     "error", "server_not_ready",
@@ -164,6 +178,8 @@ public class WhitelistController {
     }
 
     private void handleToggleWhitelist(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         if (server == null) {
             ctx.status(HttpStatus.SERVICE_UNAVAILABLE).json(Map.of(
                     "error", "server_not_ready",

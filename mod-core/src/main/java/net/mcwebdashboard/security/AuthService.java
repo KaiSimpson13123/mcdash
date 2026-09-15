@@ -120,4 +120,43 @@ public class AuthService {
         config.setSudoPasswordHash(hashPassword(newPassword));
         return configManager.save();
     }
+
+    public boolean updateAdminPassword(String newPassword) {
+        if (newPassword == null || newPassword.length() < 6) {
+            return false;
+        }
+        DashboardConfig config = configManager.getConfig();
+        config.setPasswordHash(hashPassword(newPassword));
+        return configManager.save();
+    }
+
+    public boolean updatePassword(String username, String newPassword) {
+        if (username == null || username.trim().isEmpty() || newPassword == null || newPassword.length() < 6) {
+            return false;
+        }
+        String u = username.trim();
+        if ("sudo".equalsIgnoreCase(u)) {
+            return updateSudoPassword(newPassword);
+        }
+        DashboardConfig config = configManager.getConfig();
+        String configuredAdmin = config.getUsername();
+        if (configuredAdmin == null || configuredAdmin.trim().isEmpty() || u.equalsIgnoreCase(configuredAdmin.trim())) {
+            config.setPasswordHash(hashPassword(newPassword));
+            return configManager.save();
+        }
+        return false;
+    }
+
+    public boolean changeUserPassword(String username, String currentPassword, String newPassword) {
+        if (username == null || username.trim().isEmpty() || newPassword == null || newPassword.length() < 6) {
+            return false;
+        }
+        String u = username.trim();
+        if (currentPassword != null && !currentPassword.isEmpty()) {
+            if (!verifyUser(u, currentPassword)) {
+                return false;
+            }
+        }
+        return updatePassword(u, newPassword);
+    }
 }

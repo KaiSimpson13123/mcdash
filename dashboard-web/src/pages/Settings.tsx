@@ -18,8 +18,9 @@ export const Settings: React.FC = () => {
   const [serverInfo, setServerInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Password reset state
-  const [targetAccount, setTargetAccount] = useState<'admin' | 'sudo'>('admin');
+  // Password reset state (locked to currently logged-in account)
+  const activeUser = user || (isSudo ? 'sudo' : 'admin');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPass, setChangingPass] = useState(false);
@@ -41,6 +42,10 @@ export const Settings: React.FC = () => {
 
   const handlePasswordUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPassword) {
+      addToast('error', 'Please enter your current password');
+      return;
+    }
     if (!newPassword || newPassword !== confirmPassword) {
       addToast('error', 'Passwords do not match');
       return;
@@ -52,11 +57,13 @@ export const Settings: React.FC = () => {
 
     setChangingPass(true);
     try {
-      await api.setup({
-        username: targetAccount,
-        password: newPassword,
+      const res = await api.changePassword({
+        username: activeUser,
+        currentPassword,
+        newPassword,
       });
-      addToast('success', `${targetAccount.toUpperCase()} credentials updated successfully!`);
+      addToast('success', res?.message || `Password for ${activeUser} updated successfully!`);
+      setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (e: any) {
@@ -99,45 +106,39 @@ export const Settings: React.FC = () => {
             <div>
               <h2 className="text-sm font-heading text-white">CREDENTIALS MANAGEMENT</h2>
               <p className="text-xs font-mono text-[#aaaaaa]">
-                Active user: <span className="text-[#55ff55] font-bold">{user || 'admin'}</span> {isSudo && '(sudo operator)'}
+                Logged in as: <span className="text-[#55ff55] font-bold">{activeUser}</span> {isSudo && '(sudo operator)'}
               </p>
             </div>
           </div>
 
           <form onSubmit={handlePasswordUpdate} className="space-y-3">
-            <div>
-              <label className="block text-[11px] font-heading text-[#d0d1d4] uppercase mb-1">
-                TARGET OPERATOR ACCOUNT
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTargetAccount('admin')}
-                  className={`py-1.5 text-xs font-heading border ${
-                    targetAccount === 'admin'
-                      ? 'bg-[#3c8527] text-white border-white'
-                      : 'bg-[#252526] text-[#aaaaaa] border-[#1e1e1f]'
-                  }`}
-                >
-                  ADMIN
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTargetAccount('sudo')}
-                  className={`py-1.5 text-xs font-heading border ${
-                    targetAccount === 'sudo'
-                      ? 'bg-[#7345e5] text-white border-white'
-                      : 'bg-[#252526] text-[#aaaaaa] border-[#1e1e1f]'
-                  }`}
-                >
-                  SUDO (CONSOLE)
-                </button>
+            <div className="p-2.5 bg-[#1a1a1b] border-2 border-[#141415] text-xs font-mono text-[#aaaaaa] space-y-1">
+              <div className="flex items-center justify-between">
+                <span>ACTIVE ACCOUNT:</span>
+                <span className="text-[#55ff55] font-bold uppercase">{activeUser}</span>
+              </div>
+              <div className="text-[10px] text-[#888888] pt-1 border-t border-[#2a2a2b]">
+                Policy: You can only change the password for your own logged-in account ({activeUser}).
               </div>
             </div>
 
             <div>
               <label className="block text-[11px] font-heading text-[#d0d1d4] uppercase mb-1">
-                NEW PASSWORD FOR {targetAccount.toUpperCase()}
+                CURRENT PASSWORD
+              </label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password..."
+                className="form-input text-xs"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-heading text-[#d0d1d4] uppercase mb-1">
+                NEW PASSWORD
               </label>
               <input
                 type="password"
@@ -157,7 +158,7 @@ export const Settings: React.FC = () => {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Retype password..."
+                placeholder="Retype new password..."
                 className="form-input text-xs"
                 required
               />
@@ -165,11 +166,11 @@ export const Settings: React.FC = () => {
 
             <button
               type="submit"
-              disabled={changingPass || !newPassword}
+              disabled={changingPass || !newPassword || !currentPassword}
               className="button button-primary w-full py-2 text-xs font-heading flex items-center justify-center gap-1.5"
             >
               <Key className="w-3.5 h-3.5" />
-              {changingPass ? 'UPDATING...' : `UPDATE ${targetAccount.toUpperCase()} PASSWORD`}
+              {changingPass ? 'UPDATING...' : `UPDATE ${activeUser.toUpperCase()} PASSWORD`}
             </button>
           </form>
 

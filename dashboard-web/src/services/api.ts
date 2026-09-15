@@ -67,6 +67,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  changePassword: (payload: { username?: string; currentPassword?: string; newPassword: string }) =>
+    request<{ success: boolean; message: string; username?: string }>('/api/auth/password', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // Server & Metrics
   getServerInfo: () => request<any>('/api/server'),

@@ -42,15 +42,31 @@ public class DashboardLogAppender extends AbstractAppender {
     );
 
     private static final java.util.regex.Pattern TELEPORT_PATTERN = java.util.regex.Pattern.compile(
-            "(?i)(issued server command:\\s*/(?:tp|teleport|execute.*?run tp)\\s+\\S+\\s+)[-\\d\\.~^]+(\\s+[-\\d\\.~^]+){1,2}"
+            "(?i)(issued server command:\\s*/(?:tp|teleport|execute.*?run tp)\\s+\\S+\\s+)[-\\d\\.~^]+(?:\\s+[-\\d\\.~^]+){1,2}"
     );
 
     private static final java.util.regex.Pattern TELEPORTED_MSG_PATTERN = java.util.regex.Pattern.compile(
-            "(?i)(Teleported\\s+.*?to\\s+)[-\\d\\.]+,\\s*[-\\d\\.]+,\\s*[-\\d\\.]+"
+            "(?i)(Teleported\\s+.*?to\\s+)[-\\d\\.]+(?:,\\s*|\\s+)[-\\d\\.]+(?:,\\s*|\\s+)[-\\d\\.]+"
     );
 
     private static final java.util.regex.Pattern COORD_AT_PATTERN = java.util.regex.Pattern.compile(
             "(?i)\\b(at|to|location|coords|coordinates|position)\\s*[:=]?\\s*\\[?\\s*-?\\d+(?:\\.\\d+)?[,\\s]+-?\\d+(?:\\.\\d+)?[,\\s]+-?\\d+(?:\\.\\d+)?\\s*\\]?"
+    );
+
+    private static final java.util.regex.Pattern BLOCKPOS_PATTERN = java.util.regex.Pattern.compile(
+            "(?i)BlockPos\\s*\\{[^}]*\\}"
+    );
+
+    private static final java.util.regex.Pattern XYZ_PATTERN = java.util.regex.Pattern.compile(
+            "(?i)\\bx\\s*=\\s*-?\\d+(?:\\.\\d+)?[,\\s]+y\\s*=\\s*-?\\d+(?:\\.\\d+)?[,\\s]+z\\s*=\\s*-?\\d+(?:\\.\\d+)?"
+    );
+
+    private static final java.util.regex.Pattern BRACKETED_COORD_PATTERN = java.util.regex.Pattern.compile(
+            "[\\[\\(]\\s*-?\\d+(?:\\.\\d+)?[,\\s]+-?\\d+(?:\\.\\d+)?[,\\s]+-?\\d+(?:\\.\\d+)?\\s*[\\]\\)]"
+    );
+
+    private static final java.util.regex.Pattern GENERIC_COORD_TRIPLET = java.util.regex.Pattern.compile(
+            "\\b-?\\d+(?:\\.\\d+)?(?:,\\s*|\\s+)-?\\d+(?:\\.\\d+)?(?:,\\s*|\\s+)-?\\d+(?:\\.\\d+)?\\b"
     );
 
     private static boolean isPrivateChat(String message) {
@@ -58,11 +74,15 @@ public class DashboardLogAppender extends AbstractAppender {
         return PRIVATE_CHAT_PATTERN.matcher(message).find();
     }
 
-    private static String sanitizeCoordinates(String message) {
+    public static String sanitizeCoordinates(String message) {
         if (message == null || message.isEmpty()) return "";
-        String s = TELEPORT_PATTERN.matcher(message).replaceAll("$1[REDACTED COORDS]");
-        s = TELEPORTED_MSG_PATTERN.matcher(s).replaceAll("$1[REDACTED], [REDACTED], [REDACTED]");
-        s = COORD_AT_PATTERN.matcher(s).replaceAll("$1 [REDACTED]");
+        String s = TELEPORT_PATTERN.matcher(message).replaceAll("$1void");
+        s = TELEPORTED_MSG_PATTERN.matcher(s).replaceAll("$1void");
+        s = COORD_AT_PATTERN.matcher(s).replaceAll("$1 void");
+        s = BLOCKPOS_PATTERN.matcher(s).replaceAll("void");
+        s = XYZ_PATTERN.matcher(s).replaceAll("void");
+        s = BRACKETED_COORD_PATTERN.matcher(s).replaceAll("void");
+        s = GENERIC_COORD_TRIPLET.matcher(s).replaceAll("void");
         return s;
     }
 

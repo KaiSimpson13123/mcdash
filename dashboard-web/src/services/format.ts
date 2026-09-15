@@ -26,3 +26,19 @@ export const formatTime = (ts: any): string => {
   } catch (e) {}
   return String(ts);
 };
+
+/**
+ * Sanitizes any coordinates in log or activity text by replacing number, number, number with "void".
+ */
+export const sanitizeCoordinates = (text?: string): string => {
+  if (!text) return '';
+  return text
+    .replace(/(issued server command:\s*\/(?:tp|teleport|execute.*?run tp)\s+\S+\s+)[-\d.~^]+(?:\s+[-\d.~^]+){1,2}/gi, '$1void')
+    .replace(/(Teleported\s+.*?to\s+)[-\d.]+(?:,\s*|\s+)[-\d.]+(?:,\s*|\s+)[-\d.]+/gi, '$1void')
+    .replace(/\b(at|to|location|coords|coordinates|position)\s*[:=]?\s*\[?\s*-?\d+(?:\.\d+)?[,\s]+-?\d+(?:\.\d+)?[,\s]+-?\d+(?:\.\d+)?\s*\]?/gi, '$1 void')
+    .replace(/BlockPos\s*\{[^}]*\}/gi, 'void')
+    .replace(/\bx\s*=\s*-?\d+(?:\.\d+)?[,\s]+y\s*=\s*-?\d+(?:\.\d+)?[,\s]+z\s*=\s*-?\d+(?:\.\d+)?/gi, 'void')
+    .replace(/[\[\(]\s*-?\d+(?:\.\d+)?[,\s]+-?\d+(?:\.\d+)?[,\s]+-?\d+(?:\.\d+)?\s*[\]\)]/gi, 'void')
+    .replace(/\b-?\d+(?:\.\d+)?(?:,\s*|\s+)-?\d+(?:\.\d+)?(?:,\s*|\s+)-?\d+(?:\.\d+)?\b/g, 'void');
+};
+

@@ -33,7 +33,21 @@ public class PlayerController {
         ctx.json(playerTrackerService.getOnlinePlayers());
     }
 
+    private boolean checkSudo(Context ctx) {
+        String username = ctx.attribute("username");
+        if (username == null || !"sudo".equalsIgnoreCase(username.trim())) {
+            ctx.status(HttpStatus.FORBIDDEN).json(Map.of(
+                    "error", "permission_denied",
+                    "message", "Permission denied: Only the 'sudo' user is permitted to use action buttons."
+            ));
+            return false;
+        }
+        return true;
+    }
+
     private void handleKick(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         UUID uuid = parseUuid(ctx);
         if (uuid == null) return;
 
@@ -46,6 +60,8 @@ public class PlayerController {
     }
 
     private void handleBan(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         UUID uuid = parseUuid(ctx);
         if (uuid == null) return;
 
@@ -58,6 +74,8 @@ public class PlayerController {
     }
 
     private void handleKill(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         UUID uuid = parseUuid(ctx);
         if (uuid == null) return;
 
@@ -67,6 +85,8 @@ public class PlayerController {
     }
 
     private void handleOp(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         UUID uuid = parseUuid(ctx);
         if (uuid == null) return;
 
@@ -76,6 +96,8 @@ public class PlayerController {
     }
 
     private void handleDeop(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         UUID uuid = parseUuid(ctx);
         if (uuid == null) return;
 
@@ -85,6 +107,8 @@ public class PlayerController {
     }
 
     private void handleTeleport(Context ctx) {
+        if (!checkSudo(ctx)) return;
+
         UUID uuid = parseUuid(ctx);
         if (uuid == null) return;
 
@@ -95,7 +119,7 @@ public class PlayerController {
         String dim = (String) body.getOrDefault("dimension", "minecraft:overworld");
 
         boolean success = playerTrackerService.teleportPlayer(uuid, x, y, z, dim);
-        activityTrackerService.recordEvent("PLAYER_ACTION", "Player Teleported", "UUID: " + uuid + " to " + x + ", " + y + ", " + z);
+        activityTrackerService.recordEvent("PLAYER_ACTION", "Player Teleported", "UUID: " + uuid + " to void");
         ctx.json(Map.of("success", success));
     }
 

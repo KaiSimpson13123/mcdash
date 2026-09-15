@@ -32,11 +32,13 @@ import { MetricCard } from '../components/MetricCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { Skeleton } from '../components/Skeleton';
 import { Link } from 'react-router-dom';
-import { formatTime } from '../services/format';
+import { formatTime, sanitizeCoordinates } from '../services/format';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Dashboard: React.FC = () => {
   const { liveStats, liveActivity } = useWebSocketData();
+  const { isSudo } = useAuth();
   const { addToast } = useToast();
   const [serverInfo, setServerInfo] = useState<any>(null);
   const [worldInfo, setWorldInfo] = useState<any>(null);
@@ -90,6 +92,10 @@ export const Dashboard: React.FC = () => {
 
   const handleAddWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isSudo) {
+      addToast('error', "Permission denied: Only the 'sudo' user can use action buttons.");
+      return;
+    }
     const clean = newPlayerName.trim();
     if (!clean) return;
 
@@ -107,6 +113,10 @@ export const Dashboard: React.FC = () => {
   };
 
   const handleToggleWhitelist = async () => {
+    if (!isSudo) {
+      addToast('error', "Permission denied: Only the 'sudo' user can use action buttons.");
+      return;
+    }
     setTogglingWhitelist(true);
     try {
       const targetState = !whitelist.enabled;
@@ -334,14 +344,19 @@ export const Dashboard: React.FC = () => {
 
           <button
             onClick={handleToggleWhitelist}
-            disabled={togglingWhitelist}
+            disabled={!isSudo || togglingWhitelist}
             className={`px-4 py-2 text-xs font-heading ${
-              whitelist.enabled
+              !isSudo
+                ? 'opacity-40 cursor-not-allowed mc-btn'
+                : whitelist.enabled
                 ? 'mc-btn-danger'
                 : 'mc-btn-primary'
             }`}
+            title={!isSudo ? "Action buttons require the 'sudo' operator" : undefined}
           >
-            {togglingWhitelist
+            {!isSudo
+              ? 'WHITELIST (SUDO LOCKED)'
+              : togglingWhitelist
               ? 'UPDATING...'
               : whitelist.enabled
               ? 'DEACTIVATE WHITELIST'
@@ -361,19 +376,20 @@ export const Dashboard: React.FC = () => {
         <form onSubmit={handleAddWhitelist} className="flex flex-col sm:flex-row items-center gap-2">
           <input
             type="text"
-            placeholder="Enter player username to whitelist (e.g. Steve, Alex, Notch)..."
+            placeholder={!isSudo ? "Adding to whitelist requires the 'sudo' operator..." : "Enter player username to whitelist (e.g. Steve, Alex, Notch)..."}
             value={newPlayerName}
             onChange={(e) => setNewPlayerName(e.target.value)}
-            disabled={addingPlayer}
-            className="form-input flex-1 text-xs"
+            disabled={!isSudo || addingPlayer}
+            className={`form-input flex-1 text-xs ${!isSudo ? 'opacity-60 cursor-not-allowed' : ''}`}
           />
           <button
             type="submit"
-            disabled={addingPlayer || !newPlayerName.trim()}
-            className="button button-primary px-4 py-2 text-xs w-full sm:w-auto flex-shrink-0"
+            disabled={!isSudo || addingPlayer || !newPlayerName.trim()}
+            className={`button button-primary px-4 py-2 text-xs w-full sm:w-auto flex-shrink-0 ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
+            title={!isSudo ? "Action buttons require the 'sudo' operator" : undefined}
           >
             <Plus className="w-3.5 h-3.5 mr-1" />
-            {addingPlayer ? 'ADDING TO SERVER...' : 'ADD TO WHITELIST'}
+            {!isSudo ? 'SUDO ONLY' : addingPlayer ? 'ADDING TO SERVER...' : 'ADD TO WHITELIST'}
           </button>
         </form>
 
@@ -567,12 +583,12 @@ export const Dashboard: React.FC = () => {
               liveActivity.slice(0, 4).map((evt) => (
                 <div key={evt.id} className="p-2 bg-[#252526] border border-[#1e1e1f] space-y-0.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-heading text-[#55ff55] truncate">{evt.title}</span>
+                    <span className="text-[11px] font-heading text-[#55ff55] truncate">{sanitizeCoordinates(evt.title)}</span>
                     <span className="text-[10px] text-[#888888] font-mono">
                       {formatTime(evt.timestamp)}
                     </span>
                   </div>
-                  <p className="text-[11px] font-mono text-[#cccccc] truncate">{evt.description}</p>
+                  <p className="text-[11px] font-mono text-[#cccccc] truncate">{sanitizeCoordinates(evt.description)}</p>
                 </div>
               ))
             )}

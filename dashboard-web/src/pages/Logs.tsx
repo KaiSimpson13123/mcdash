@@ -15,7 +15,7 @@ import { useWebSocketData, LogItem } from '../contexts/WebSocketContext';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
-import { formatTime } from '../services/format';
+import { formatTime, sanitizeCoordinates } from '../services/format';
 
 export const Logs: React.FC = () => {
   const { liveLogs, isLogsPaused, setIsLogsPaused, clearLogs } = useWebSocketData();
@@ -243,11 +243,11 @@ export const Logs: React.FC = () => {
                 [{log.loggerName || 'Server'}]
               </span>
 
-              <span className={`${getLogColor(log.level)} break-all`}>{log.message}</span>
+              <span className={`${getLogColor(log.level)} break-all`}>{sanitizeCoordinates(log.message)}</span>
 
               {log.throwable && (
                 <div className="w-full text-[#ff5555] text-[11px] mt-1 pl-16 whitespace-pre-wrap">
-                  {log.throwable}
+                  {sanitizeCoordinates(log.throwable)}
                 </div>
               )}
             </div>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { FormattedText } from '../components/FormattedText';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Skeleton } from '../components/Skeleton';
@@ -36,6 +37,7 @@ type SortField = 'username' | 'ping' | 'onlineDuration';
 
 export const Players: React.FC = () => {
   const { addToast } = useToast();
+  const { isSudo } = useAuth();
   const [players, setPlayers] = useState<PlayerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -110,7 +112,20 @@ export const Players: React.FC = () => {
     return `${m}m ${s}s`;
   };
 
+  const handleActionClick = (type: 'kick' | 'ban' | 'kill' | 'op' | 'deop' | 'teleport', player: PlayerData) => {
+    if (!isSudo) {
+      addToast('error', "Permission denied: Only the 'sudo' user can use action buttons.");
+      return;
+    }
+    setActiveModal({ type, player });
+  };
+
   const executeAction = async () => {
+    if (!isSudo) {
+      addToast('error', "Permission denied: Only the 'sudo' user can use action buttons.");
+      setActiveModal({ type: null, player: null });
+      return;
+    }
     if (!activeModal.player || !activeModal.type) return;
     setActionLoading(true);
     const { uuid, username } = activeModal.player;
@@ -225,6 +240,14 @@ export const Players: React.FC = () => {
 
       {/* Players Table */}
       <div className="bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] overflow-hidden">
+        {!isSudo && (
+          <div className="p-2.5 bg-[#2b1818] border-b-2 border-[#141415] flex items-center justify-between text-xs font-mono text-[#ffaaaa]">
+            <span>[RESTRICTED ACCESS] Logged in as non-sudo user. Action buttons (TP, OP, KILL, KICK, BAN) are locked to the 'sudo' operator.</span>
+            <span className="font-heading uppercase text-[10px] text-white px-2 py-0.5 bg-[#521212] border border-[#ff5555]">
+              SUDO ONLY
+            </span>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs font-mono">
             <thead className="bg-[#242425] text-xs font-heading uppercase tracking-wider text-[#aaaaaa] border-b-2 border-[#141415]">
@@ -334,47 +357,47 @@ export const Players: React.FC = () => {
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1 flex-wrap">
                         <button
-                          onClick={() => setActiveModal({ type: 'teleport', player })}
-                          className="mc-btn px-2 py-0.5 text-[10px]"
-                          title="Teleport"
+                          onClick={() => handleActionClick('teleport', player)}
+                          className={`mc-btn px-2 py-0.5 text-[10px] ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          title={!isSudo ? "Action buttons require the 'sudo' operator" : "Teleport"}
                         >
                           TP
                         </button>
                         {player.isOp ? (
                           <button
-                            onClick={() => setActiveModal({ type: 'deop', player })}
-                            className="mc-btn px-2 py-0.5 text-[10px]"
-                            title="De-OP"
+                            onClick={() => handleActionClick('deop', player)}
+                            className={`mc-btn px-2 py-0.5 text-[10px] ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            title={!isSudo ? "Action buttons require the 'sudo' operator" : "De-OP"}
                           >
                             DE-OP
                           </button>
                         ) : (
                           <button
-                            onClick={() => setActiveModal({ type: 'op', player })}
-                            className="mc-btn px-2 py-0.5 text-[10px] bg-[#3c8527] text-white"
-                            title="Grant OP"
+                            onClick={() => handleActionClick('op', player)}
+                            className={`mc-btn px-2 py-0.5 text-[10px] bg-[#3c8527] text-white ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
+                            title={!isSudo ? "Action buttons require the 'sudo' operator" : "Grant OP"}
                           >
                             OP
                           </button>
                         )}
                         <button
-                          onClick={() => setActiveModal({ type: 'kill', player })}
-                          className="mc-btn px-2 py-0.5 text-[10px] bg-[#a82323] text-white"
-                          title="Kill Player"
+                          onClick={() => handleActionClick('kill', player)}
+                          className={`mc-btn px-2 py-0.5 text-[10px] bg-[#a82323] text-white ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          title={!isSudo ? "Action buttons require the 'sudo' operator" : "Kill Player"}
                         >
                           KILL
                         </button>
                         <button
-                          onClick={() => setActiveModal({ type: 'kick', player })}
-                          className="mc-btn px-2 py-0.5 text-[10px]"
-                          title="Kick Player"
+                          onClick={() => handleActionClick('kick', player)}
+                          className={`mc-btn px-2 py-0.5 text-[10px] ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          title={!isSudo ? "Action buttons require the 'sudo' operator" : "Kick Player"}
                         >
                           KICK
                         </button>
                         <button
-                          onClick={() => setActiveModal({ type: 'ban', player })}
-                          className="mc-btn-danger px-2 py-0.5 text-[10px]"
-                          title="Ban Player"
+                          onClick={() => handleActionClick('ban', player)}
+                          className={`mc-btn-danger px-2 py-0.5 text-[10px] ${!isSudo ? 'opacity-40 cursor-not-allowed' : ''}`}
+                          title={!isSudo ? "Action buttons require the 'sudo' operator" : "Ban Player"}
                         >
                           BAN
                         </button>

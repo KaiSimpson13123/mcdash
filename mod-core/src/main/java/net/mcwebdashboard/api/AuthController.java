@@ -31,6 +31,8 @@ public class AuthController {
         app.post("/api/auth/login", this::handleLogin);
         app.post("/api/auth/logout", this::handleLogout);
         app.post("/api/auth/setup", this::handleSetup);
+        app.post("/api/auth/password", this::handleChangePassword);
+        app.post("/api/auth/change-password", this::handleChangePassword);
     }
 
     private void handleStatus(Context ctx) {
@@ -149,6 +151,74 @@ public class AuthController {
             ctx.status(HttpStatus.INTERNAL_SERVER_ERROR).json(Map.of(
                     "error", "setup_failed",
                     "message", "Failed to save configuration."
+            ));
+        }
+    }
+
+    private void handleChangePassword(Context ctx) {
+        String sessionId = ctx.cookie(AuthMiddleware.SESSION_COOKIE);
+        if (sessionId == null) {
+            String authHeader = ctx.header("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                sessionId = authHeader.substring(7);
+            }
+        }
+
+        SessionManager.Session session = sessionManager.getSession(sessionId, configManager.getConfig().getSessionTimeoutMinutes());
+        if (session == null) {
+            ctx.status(HttpStatus.UNAUTHORIZED).json(Map.of(
+                    "error", "unauthorized",
+                    "message", "Active authenticated session required."
+            ));
+            return;
+        }
+
+        String loggedInUser = session.getUsername();
+        Map<String, String> body = ctx.bodyAsClass(Map.class);
+        String targetUser = body.get("username");
+        String currentPassword = body.get("currentPassword");
+        String newPassword = body.get("newPassword");
+
+        // "make it so you have to be logged into the same user if u want to change the password"
+        if (targetUser != null && !targetUser.trim().isEmpty()) {
+            if (!loggedInUser.equalsIgnoreCase(targetUser.trim())) {
+                ctx.status(HttpStatus.FORBIDDEN).json(Map.of(
+                        "error", "permission_denied",
+                        "message", "You must be logged into the same user to change their password."
+                ));
+                return;
+            }
+        }
+
+        if (newPassword == null || newPassword.length() < 6) {
+            ctx.status(HttpStatus.BAD_REQUEST).json(Map.of(
+                    "error", "invalid_password",
+                    "message", "New password must be at least 6 characters long."
+            ));
+            return;
+        }
+
+        if (currentPassword != null && !currentPassword.isEmpty()) {
+            if (!authService.verifyUser(loggedInUser, currentPassword)) {
+                ctx.status(HttpStatus.BAD_REQUEST).json(Map.of(
+                        "error", "incorrect_current_password",
+                        "message", "Current password does not match."
+                ));
+                return;
+            }
+        }
+
+        boolean success = authService.changeUserPassword(loggedInUser, currentPassword, newPassword);
+        if (success) {
+            ctx.json(Map.of(
+                    "success", true,
+                    "username", loggedInUser,
+                    "message", "Password for " + loggedInUser + " updated successfully."
+            ));
+        } else {
+            ctx.status(HttpStatus.INTERNAL_SERVER_ERROR).json(Map.of(
+                    "error", "update_failed",
+                    "message", "Failed to update password."
             ));
         }
     }

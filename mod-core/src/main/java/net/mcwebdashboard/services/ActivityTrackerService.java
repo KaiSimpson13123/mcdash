@@ -1,5 +1,6 @@
 package net.mcwebdashboard.services;
 
+import net.mcwebdashboard.logging.DashboardLogAppender;
 import net.mcwebdashboard.websocket.WebSocketService;
 
 import java.time.Instant;
@@ -56,7 +57,9 @@ public class ActivityTrackerService {
 
     public void recordEvent(String category, String title, String description) {
         long id = SEQUENCE.incrementAndGet();
-        ActivityEvent event = new ActivityEvent(id, Instant.now(), category, title, description);
+        String safeTitle = DashboardLogAppender.sanitizeCoordinates(title);
+        String safeDesc = DashboardLogAppender.sanitizeCoordinates(description);
+        ActivityEvent event = new ActivityEvent(id, Instant.now(), category, safeTitle, safeDesc);
         eventBuffer.addFirst(event); // Newest first
 
         while (eventBuffer.size() > maxEvents) {
@@ -78,7 +81,15 @@ public class ActivityTrackerService {
                     continue;
                 }
             }
-            result.add(event);
+            String safeTitle = DashboardLogAppender.sanitizeCoordinates(event.getTitle());
+            String safeDesc = DashboardLogAppender.sanitizeCoordinates(event.getDescription());
+            result.add(new ActivityEvent(
+                    event.getId(),
+                    event.timestamp,
+                    event.getCategory(),
+                    safeTitle,
+                    safeDesc
+            ));
             if (result.size() >= targetLimit) {
                 break;
             }
