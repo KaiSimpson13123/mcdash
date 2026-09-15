@@ -9,6 +9,8 @@ public class DashboardConfig {
     private int port = 10019;
     private String username = "admin";
     private String passwordHash = "";
+    private String sudoUsername = "sudo";
+    private String sudoPasswordHash = "";
     private int sessionTimeoutMinutes = 1440;
     private int logHistorySize = 500;
     private boolean enablePlayerTracking = true;
@@ -123,5 +125,21 @@ public class DashboardConfig {
 
     public void setEnableActivityTracking(boolean enableActivityTracking) {
         this.enableActivityTracking = enableActivityTracking;
+    }
+
+    public String getSudoUsername() {
+        return sudoUsername != null && !sudoUsername.trim().isEmpty() ? sudoUsername : "sudo";
+    }
+
+    public void setSudoUsername(String sudoUsername) {
+        this.sudoUsername = sudoUsername;
+    }
+
+    public String getSudoPasswordHash() {
+        return sudoPasswordHash;
+    }
+
+    public void setSudoPasswordHash(String sudoPasswordHash) {
+        this.sudoPasswordHash = sudoPasswordHash;
     }
 }

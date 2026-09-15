@@ -183,9 +183,9 @@ public class ServerEventHandler {
 
             String senderName = sender.getName().getString();
             String prefix = luckPermsService.getPlayerPrefix(sender.getUUID(), isPlayerOp(sender));
+            String fullSender = (prefix.isEmpty() ? "" : prefix + " ") + senderName;
             String content = message.signedContent();
-
-            activityTracker.recordEvent("CHAT", "Chat Message", (prefix.isEmpty() ? "" : prefix + " ") + senderName + ": " + content);
+            activityTracker.recordEvent("CHAT", "Chat: " + fullSender, content);
         });
 
         // COMMAND MESSAGE

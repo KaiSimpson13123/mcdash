@@ -23,9 +23,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
   if (isLoading) {
     return (
       <div className="min-h-screen bg-dark-950 flex items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <div className="w-10 h-10 border-4 border-brand-500/30 border-t-brand-500 rounded-full animate-spin" />
-          <p className="text-sm text-slate-400 font-medium">Connecting to dashboard...</p>
+        <div className="flex flex-col items-center space-y-4 font-minecraft">
+          <div className="w-8 h-8 border-4 border-[#333333] border-t-[#55ff55] animate-spin" />
+          <p className="text-sm text-[#aaaaaa]">Loading chunks...</p>
         </div>
       </div>
     );

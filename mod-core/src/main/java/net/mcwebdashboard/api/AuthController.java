@@ -39,10 +39,12 @@ public class AuthController {
         SessionManager.Session session = sessionManager.getSession(sessionId, configManager.getConfig().getSessionTimeoutMinutes());
 
         if (session != null) {
+            boolean isSudo = "sudo".equalsIgnoreCase(session.getUsername());
             ctx.json(Map.of(
                     "setupRequired", setupRequired,
                     "authenticated", true,
                     "username", session.getUsername(),
+                    "isSudo", isSudo,
                     "csrfToken", session.getCsrfToken()
             ));
         } else {
@@ -75,8 +77,7 @@ public class AuthController {
         String username = body.get("username");
         String password = body.get("password");
 
-        String configuredUsername = configManager.getConfig().getUsername();
-        if (username == null || !username.equals(configuredUsername) || !authService.verifyPassword(password)) {
+        if (username == null || !authService.verifyUser(username, password)) {
             rateLimiter.recordFailure(ip);
             ctx.status(HttpStatus.UNAUTHORIZED).json(Map.of(
                     "error", "invalid_credentials",
@@ -86,13 +87,15 @@ public class AuthController {
         }
 
         rateLimiter.recordSuccess(ip);
-        SessionManager.Session session = sessionManager.createSession(username, ip);
+        String sessionUser = "sudo".equalsIgnoreCase(username.trim()) ? "sudo" : username.trim();
+        SessionManager.Session session = sessionManager.createSession(sessionUser, ip);
 
         setSessionCookie(ctx, session.getSessionId());
 
         ctx.json(Map.of(
                 "success", true,
                 "username", session.getUsername(),
+                "isSudo", "sudo".equalsIgnoreCase(session.getUsername()),
                 "csrfToken", session.getCsrfToken()
         ));
     }

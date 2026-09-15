@@ -3,6 +3,7 @@ import { api, setCsrfToken } from '../services/api';
 
 interface AuthContextValue {
   user: string | null;
+  isSudo: boolean;
   isAuthenticated: boolean;
   isSetupRequired: boolean;
   isLoading: boolean;
@@ -79,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
+        isSudo: (user?.toLowerCase() === 'sudo'),
         isAuthenticated,
         isSetupRequired,
         isLoading,

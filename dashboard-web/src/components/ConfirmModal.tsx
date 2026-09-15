@@ -39,35 +39,37 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="glass-panel w-full max-w-md p-6 rounded-2xl shadow-2xl border border-white/10 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 select-none animate-in fade-in duration-100">
+      <div className="bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] w-full max-w-md p-6 relative">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors p-1 rounded-lg"
+          className="absolute top-3 right-3 text-[#aaaaaa] hover:text-white p-1 hover:bg-[#48494a] border border-[#1e1e1f]"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center space-x-3 mb-4">
-          <div className={`p-2.5 rounded-xl border ${isDanger ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-brand-500/10 text-brand-400 border-brand-500/20'}`}>
+        <div className="flex items-center space-x-3 mb-4 border-b-2 border-[#222223] pb-3">
+          <div className={`p-2 border-2 border-[#141415] ${isDanger ? 'bg-[#a82323] text-white shadow-[inset_1px_1px_0_#d44d4d]' : 'bg-[#3c8527] text-white shadow-[inset_1px_1px_0_#4f913c]'}`}>
             <AlertTriangle className="w-5 h-5" />
           </div>
-          <h3 className="text-lg font-bold text-white tracking-tight">{title}</h3>
+          <h3 className="text-base font-heading text-white tracking-wide">{title}</h3>
         </div>
 
-        <div className="text-sm text-slate-300 mb-5 leading-relaxed">{message}</div>
+        <div className="text-xs font-mono text-[#d0d1d4] mb-5 leading-relaxed bg-[#1a1a1b] p-3 border-2 border-[#141415] shadow-[inset_2px_2px_0_#0f0f10]">
+          {message}
+        </div>
 
         {requireReason && (
           <div className="mb-5">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-              Reason
+            <label className="block text-xs font-heading uppercase tracking-wider text-[#aaaaaa] mb-1.5">
+              REASON FOR ACTION
             </label>
             <input
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Enter reason..."
-              className="glass-input w-full px-3.5 py-2 rounded-xl text-sm"
+              className="mc-input w-full px-3 py-2 text-xs font-mono"
               autoFocus
             />
           </div>
@@ -78,7 +80,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="px-4 py-2 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors disabled:opacity-50"
+            className="mc-btn px-4 py-1.5 text-xs"
           >
             {cancelLabel}
           </button>
@@ -86,13 +88,13 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             type="button"
             onClick={handleConfirm}
             disabled={isLoading}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold shadow-lg transition-all disabled:opacity-50 ${
+            className={`px-4 py-1.5 text-xs font-heading ${
               isDanger
-                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-900/40'
-                : 'bg-brand-500 hover:bg-brand-400 text-dark-950 shadow-brand-500/20'
+                ? 'mc-btn-danger'
+                : 'mc-btn-primary'
             }`}
           >
-            {isLoading ? 'Processing...' : confirmLabel}
+            {isLoading ? 'WORKING...' : confirmLabel}
           </button>
         </div>
       </div>

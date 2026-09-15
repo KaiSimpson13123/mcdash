@@ -3,13 +3,20 @@ package net.mcwebdashboard.api;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
+import net.mcwebdashboard.services.ActivityTrackerService;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 
+import java.time.Instant;
 import java.util.Map;
 
 public class ChatController {
+    private final ActivityTrackerService activityTrackerService;
     private volatile MinecraftServer server;
+
+    public ChatController(ActivityTrackerService activityTrackerService) {
+        this.activityTrackerService = activityTrackerService;
+    }
 
     public void setServer(MinecraftServer server) {
         this.server = server;
@@ -42,6 +49,16 @@ public class ChatController {
             }
         });
 
-        ctx.json(Map.of("success", true, "message", trimmed));
+        // Record CHAT event in ActivityTracker so it broadcasts over WebSocket to all web clients
+        if (activityTrackerService != null) {
+            activityTrackerService.recordEvent("CHAT", "Chat: [WebDashboard]", trimmed);
+        }
+
+        ctx.json(Map.of(
+                "success", true,
+                "message", trimmed,
+                "sender", "[WebDashboard]",
+                "timestamp", Instant.now().toString()
+        ));
     }
 }

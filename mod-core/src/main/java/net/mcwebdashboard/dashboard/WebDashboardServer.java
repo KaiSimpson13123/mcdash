@@ -40,6 +40,8 @@ public class WebDashboardServer {
     private PlayerController playerController;
     private LuckPermsController luckPermsController;
     private ChatController chatController;
+    private WhitelistController whitelistController;
+    private ConsoleController consoleController;
 
     public WebDashboardServer(
             ConfigManager configManager,
@@ -76,6 +78,8 @@ public class WebDashboardServer {
         if (serverController != null) serverController.setServer(server);
         if (luckPermsController != null) luckPermsController.setServer(server);
         if (chatController != null) chatController.setServer(server);
+        if (whitelistController != null) whitelistController.setServer(server);
+        if (consoleController != null) consoleController.setServer(server);
     }
 
     public synchronized void start() {
@@ -131,13 +135,21 @@ public class WebDashboardServer {
             luckPermsController = new LuckPermsController(luckPermsService);
             luckPermsController.registerRoutes(app);
 
-            chatController = new ChatController();
+            chatController = new ChatController(activityTrackerService);
             chatController.registerRoutes(app);
+
+            whitelistController = new WhitelistController(activityTrackerService);
+            whitelistController.registerRoutes(app);
+
+            consoleController = new ConsoleController(activityTrackerService);
+            consoleController.registerRoutes(app);
 
             if (this.server != null) {
                 serverController.setServer(this.server);
                 luckPermsController.setServer(this.server);
                 chatController.setServer(this.server);
+                whitelistController.setServer(this.server);
+                consoleController.setServer(this.server);
             }
 
             app.start(config.getHost(), config.getPort());

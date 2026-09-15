@@ -8,21 +8,28 @@ import {
   Trash2,
   Download,
   ArrowDown,
-  RefreshCw,
+  Lock,
+  Send,
 } from 'lucide-react';
 import { useWebSocketData, LogItem } from '../contexts/WebSocketContext';
+import { useAuth } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { formatTime } from '../services/format';
 
 export const Logs: React.FC = () => {
   const { liveLogs, isLogsPaused, setIsLogsPaused, clearLogs } = useWebSocketData();
+  const { user, isSudo } = useAuth();
   const { addToast } = useToast();
   const [initialLogs, setInitialLogs] = useState<LogItem[]>([]);
   const [search, setSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState('ALL');
   const [autoScroll, setAutoScroll] = useState(true);
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // Console Command Execution state for sudo user
+  const [commandText, setCommandText] = useState('');
+  const [executing, setExecuting] = useState(false);
 
   // Load latest backlog on mount
   useEffect(() => {
@@ -67,38 +74,60 @@ export const Logs: React.FC = () => {
     addToast('info', 'Downloading server-console.log');
   };
 
+  const handleExecuteCommand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cmd = commandText.trim();
+    if (!cmd) return;
+
+    if (!isSudo) {
+      addToast('error', "Only the 'sudo' user can execute console commands.");
+      return;
+    }
+
+    setExecuting(true);
+    try {
+      await api.executeConsoleCommand(cmd);
+      addToast('success', `Executed: /${cmd.startsWith('/') ? cmd.slice(1) : cmd}`);
+      setCommandText('');
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to execute console command');
+    } finally {
+      setExecuting(false);
+    }
+  };
+
   const getLogColor = (level: string) => {
     switch (level?.toUpperCase()) {
       case 'ERROR':
       case 'FATAL':
-        return 'text-rose-400';
+        return 'text-[#ff5555]';
       case 'WARN':
-        return 'text-amber-300';
+        return 'text-[#ffff55]';
       case 'DEBUG':
       case 'TRACE':
-        return 'text-slate-400';
+        return 'text-[#aaaaaa]';
       case 'INFO':
       default:
-        return 'text-slate-100';
+        return 'text-[#ffffff]';
     }
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 select-none animate-fadeIn">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#2e2f30] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-              <Terminal className="w-8 h-8 text-brand-400" />
-              Console Logs
+            <h1 className="text-2xl font-heading tracking-wide text-white flex items-center gap-2">
+              <Terminal className="w-6 h-6 text-[#55ff55]" />
+              SERVER CONSOLE & LOGS
             </h1>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono">
-              {filteredLogs.length} / 500 Buffer
+            <span className="px-2 py-0.5 text-[10px] font-heading bg-[#1e1e1f] text-[#ffaa00] border border-[#141415]">
+              {filteredLogs.length} / 500 BUFFER
             </span>
           </div>
-          <p className="text-sm text-slate-400 mt-1">
-            Real-time Log4J streaming capture with filtering, severity analysis, and log download.
+          <p className="text-xs font-mono text-[#aaaaaa] mt-1">
+            Real-time server log streaming, severity filtering, and direct console command execution for sudo.
           </p>
         </div>
 
@@ -106,76 +135,72 @@ export const Logs: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setIsLogsPaused(!isLogsPaused)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-              isLogsPaused
-                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+            className={`mc-btn px-3 py-1.5 text-xs ${
+              isLogsPaused ? 'bg-[#ffaa00] text-black' : ''
             }`}
           >
             {isLogsPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-            {isLogsPaused ? 'Resume Stream' : 'Pause Stream'}
+            {isLogsPaused ? 'RESUME STREAM' : 'PAUSE STREAM'}
           </button>
 
           <button
             onClick={() => setAutoScroll(!autoScroll)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-              autoScroll
-                ? 'bg-brand-500/10 text-brand-400 border-brand-500/20'
-                : 'bg-slate-800 text-slate-400 border-white/5'
+            className={`mc-btn px-3 py-1.5 text-xs ${
+              autoScroll ? 'bg-[#3c8527] text-white' : ''
             }`}
           >
             <ArrowDown className="w-3.5 h-3.5" />
-            Auto-Scroll
+            AUTO-SCROLL
           </button>
 
           <button
             onClick={clearLogs}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5 text-xs font-semibold transition-all"
+            className="mc-btn px-3 py-1.5 text-xs"
             title="Clear buffer"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Clear
+            CLEAR
           </button>
 
           <button
             onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md transition-all"
+            className="button button-primary px-3 py-1.5 text-xs"
           >
             <Download className="w-3.5 h-3.5" />
-            Download Log
+            DOWNLOAD LOG
           </button>
         </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="glass-card p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="relative w-full md:w-96">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+      <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-3 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="relative w-full md:w-80">
+          <Search className="w-4 h-4 text-[#888888] absolute left-2.5 top-2.5" />
           <input
             type="text"
             placeholder="Search console logs..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-dark-950/60 border border-white/10 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-brand-500 font-mono transition-colors"
+            className="form-input pl-8 py-1 text-xs h-8"
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <Filter className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-1.5 w-full md:w-auto flex-wrap">
+          <span className="text-[11px] font-heading text-[#aaaaaa] uppercase mr-1">LEVEL:</span>
           {(['ALL', 'INFO', 'WARN', 'ERROR', 'DEBUG'] as const).map((lvl) => (
             <button
               key={lvl}
               onClick={() => setLevelFilter(lvl)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-colors ${
+              className={`px-2.5 py-1 text-xs font-heading border ${
                 levelFilter === lvl
                   ? lvl === 'ERROR'
-                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    ? 'bg-[#a82323] text-white border-white'
                     : lvl === 'WARN'
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    ? 'bg-[#ffaa00] text-black border-white'
                     : lvl === 'DEBUG'
-                    ? 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
-                    : 'bg-brand-500/20 text-brand-300 border border-brand-500/30'
-                  : 'bg-dark-950/40 text-slate-400 hover:text-white border border-white/5'
+                    ? 'bg-[#5a5b5c] text-white border-white'
+                    : 'bg-[#3c8527] text-white border-white'
+                  : 'bg-[#252526] text-[#aaaaaa] border-[#1e1e1f] hover:bg-[#38393a] hover:text-white'
               }`}
             >
               {lvl}
@@ -187,46 +212,86 @@ export const Logs: React.FC = () => {
       {/* Terminal Display */}
       <div
         ref={logContainerRef}
-        className="h-[600px] w-full rounded-2xl bg-black/90 border border-white/10 p-4 font-mono text-xs overflow-y-auto space-y-1.5 shadow-2xl backdrop-blur-xl"
+        className="h-[550px] w-full bg-[#101011] border-4 border-[#141415] shadow-[inset_3px_3px_0_#050505] p-3 font-mono text-xs overflow-y-auto space-y-1 select-text"
       >
         {filteredLogs.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-slate-600 italic">
+          <div className="h-full flex items-center justify-center text-[#777777] italic font-mono select-none">
             No logs captured yet
           </div>
         ) : (
           filteredLogs.map((log) => (
-            <div key={log.id} className="leading-relaxed hover:bg-white/5 px-2 py-0.5 rounded transition-colors group">
-              <span className="text-slate-600 select-none mr-2 font-mono">
+            <div key={log.id} className="leading-relaxed hover:bg-[#1a1a1b] px-1 py-0.5 group flex flex-wrap items-baseline">
+              <span className="text-[#666666] select-none mr-2 font-mono">
                 {formatTime(log.timestamp) || '00:00:00'}
               </span>
 
               <span
-                className={`inline-block w-14 font-bold select-none text-[11px] ${
+                className={`inline-block w-14 font-heading select-none text-[11px] ${
                   log.level === 'ERROR'
-                    ? 'text-rose-400'
+                    ? 'text-[#ff5555]'
                     : log.level === 'WARN'
-                    ? 'text-amber-400'
+                    ? 'text-[#ffff55]'
                     : log.level === 'DEBUG'
-                    ? 'text-slate-400'
-                    : 'text-emerald-400'
+                    ? 'text-[#aaaaaa]'
+                    : 'text-[#55ff55]'
                 }`}
               >
                 [{log.level}]
               </span>
 
-              <span className="text-slate-500 mr-2 select-none">
+              <span className="text-[#888888] mr-2 select-none">
                 [{log.loggerName || 'Server'}]
               </span>
 
               <span className={`${getLogColor(log.level)} break-all`}>{log.message}</span>
 
               {log.throwable && (
-                <div className="text-rose-300/80 text-[11px] mt-1 pl-16 whitespace-pre-wrap">
+                <div className="w-full text-[#ff5555] text-[11px] mt-1 pl-16 whitespace-pre-wrap">
                   {log.throwable}
                 </div>
               )}
             </div>
           ))
+        )}
+      </div>
+
+      {/* Console Command Execution Bar (Feature: sudo user can execute commands) */}
+      <div className="bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] p-3">
+        {isSudo ? (
+          <form onSubmit={handleExecuteCommand} className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-2 bg-[#1a1a1b] border-2 border-[#141415] text-[#fdaa00] font-heading text-xs flex-shrink-0">
+              <Terminal className="w-4 h-4" />
+              <span>sudo@console:$</span>
+            </div>
+            <input
+              type="text"
+              placeholder="Execute server command as sudo (e.g. /say Hello, /time set day, /gamemode creative)..."
+              value={commandText}
+              onChange={(e) => setCommandText(e.target.value)}
+              disabled={executing}
+              className="form-input flex-1 text-xs"
+            />
+            <button
+              type="submit"
+              disabled={executing || !commandText.trim()}
+              className="button button-primary px-4 py-2 text-xs flex-shrink-0 flex items-center gap-1.5"
+            >
+              <Send className="w-3.5 h-3.5" />
+              {executing ? 'RUNNING...' : 'EXECUTE'}
+            </button>
+          </form>
+        ) : (
+          <div className="p-3 bg-[#1a1a1b] border-2 border-[#141415] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono text-[#aaaaaa]">
+            <div className="flex items-center gap-2 text-[#ffaa00]">
+              <Lock className="w-4 h-4 text-[#ff5555] flex-shrink-0" />
+              <span>
+                <strong className="font-heading text-white">CONSOLE PRIVILEGE:</strong> Command execution is restricted to user: <strong className="text-[#fdaa00]">sudo</strong>. Currently logged in as <strong className="text-[#55ff55]">{user || 'Admin'}</strong>.
+              </span>
+            </div>
+            <span className="text-[10px] text-[#777] font-mono">
+              Sign in as 'sudo' to run console commands.
+            </span>
+          </div>
         )}
       </div>
     </div>

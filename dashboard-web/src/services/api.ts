@@ -129,4 +129,25 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message }),
     }),
+
+  // Whitelist (Add-only policy, no delete allowed)
+  getWhitelist: () =>
+    request<{ enabled: boolean; count: number; entries: { name: string; uuid?: string }[] }>('/api/whitelist'),
+  addToWhitelist: (name: string) =>
+    request<{ success: boolean; message: string; name: string }>('/api/whitelist/add', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    }),
+  toggleWhitelist: (enabled: boolean) =>
+    request<{ success: boolean; enabled: boolean; message: string }>('/api/whitelist/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+    }),
+
+  // Console Execution (privileged to sudo user)
+  executeConsoleCommand: (command: string) =>
+    request<{ success: boolean; command: string; message: string }>('/api/console/execute', {
+      method: 'POST',
+      body: JSON.stringify({ command }),
+    }),
 };

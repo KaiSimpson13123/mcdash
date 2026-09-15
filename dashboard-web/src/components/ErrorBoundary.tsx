@@ -27,17 +27,17 @@ export class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center glass-panel rounded-2xl m-6">
-          <div className="p-4 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 mb-4">
+        <div className="min-h-[400px] flex flex-col items-center justify-center p-8 text-center mc-panel m-6">
+          <div className="p-4 bg-[#3a1515] text-[#ff5555] border-2 border-[#aa0000] mb-4">
             <AlertOctagon className="w-8 h-8" />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Something went wrong</h2>
-          <p className="text-sm text-slate-400 max-w-md mb-6">
+          <h2 className="text-xl font-minecraft text-white mb-2">Something went wrong</h2>
+          <p className="text-xs text-[#a0a0a0] font-minecraft max-w-md mb-6">
             An unexpected error occurred while rendering this dashboard component. The rest of the dashboard remains operational.
           </p>
           <button
             onClick={() => this.setState({ hasError: false, error: null })}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium transition-colors"
+            className="mc-btn inline-flex items-center gap-2 font-minecraft text-xs"
           >
             <RefreshCw className="w-4 h-4" />
             <span>Try Again</span>

@@ -13,6 +13,7 @@ import {
   HardDrive,
   ExternalLink,
   RefreshCw,
+  Plus,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -32,13 +33,34 @@ import { StatusBadge } from '../components/StatusBadge';
 import { Skeleton } from '../components/Skeleton';
 import { Link } from 'react-router-dom';
 import { formatTime } from '../services/format';
+import { useToast } from '../contexts/ToastContext';
 
 export const Dashboard: React.FC = () => {
   const { liveStats, liveActivity } = useWebSocketData();
+  const { addToast } = useToast();
   const [serverInfo, setServerInfo] = useState<any>(null);
   const [worldInfo, setWorldInfo] = useState<any>(null);
   const [perfHistory, setPerfHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Whitelist State
+  const [whitelist, setWhitelist] = useState<{ enabled: boolean; count: number; entries: { name: string; uuid?: string }[] }>({
+    enabled: false,
+    count: 0,
+    entries: [],
+  });
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [addingPlayer, setAddingPlayer] = useState(false);
+  const [togglingWhitelist, setTogglingWhitelist] = useState(false);
+
+  const fetchWhitelist = async () => {
+    try {
+      const data = await api.getWhitelist();
+      if (data) setWhitelist(data);
+    } catch (e) {
+      console.error('Failed to load whitelist', e);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -52,6 +74,7 @@ export const Dashboard: React.FC = () => {
       if (perf && perf.history1h) {
         setPerfHistory(perf.history1h);
       }
+      await fetchWhitelist();
     } catch (e) {
       console.error('Failed to load dashboard data', e);
     } finally {
@@ -65,31 +88,52 @@ export const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Format uptime
-  const formatUptime = (totalSeconds?: number) => {
-    if (!totalSeconds) return '0m';
-    const d = Math.floor(totalSeconds / 86400);
-    const h = Math.floor((totalSeconds % 86400) / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    if (d > 0) return `${d}d ${h}h ${m}m`;
-    if (h > 0) return `${h}h ${m}m`;
-    return `${m}m`;
+  const handleAddWhitelist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const clean = newPlayerName.trim();
+    if (!clean) return;
+
+    setAddingPlayer(true);
+    try {
+      await api.addToWhitelist(clean);
+      addToast('success', `Added ${clean} to server whitelist!`);
+      setNewPlayerName('');
+      await fetchWhitelist();
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to add player to whitelist');
+    } finally {
+      setAddingPlayer(false);
+    }
+  };
+
+  const handleToggleWhitelist = async () => {
+    setTogglingWhitelist(true);
+    try {
+      const targetState = !whitelist.enabled;
+      await api.toggleWhitelist(targetState);
+      addToast('info', `Server whitelist is now ${targetState ? 'ENABLED' : 'DISABLED'}`);
+      setWhitelist((prev) => ({ ...prev, enabled: targetState }));
+      await fetchWhitelist();
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to toggle whitelist');
+    } finally {
+      setTogglingWhitelist(false);
+    }
   };
 
   // Convert Minecraft world ticks (0-24000) to 24h digital time
   const formatWorldTime = (ticks?: number) => {
     if (ticks === undefined) return '06:00';
-    // 0 ticks is 06:00, 6000 is 12:00, 18000 is 00:00
     const hours = Math.floor((ticks / 1000 + 6) % 24);
     const minutes = Math.floor(((ticks % 1000) / 1000) * 60);
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   const weatherIcon = () => {
-    if (!worldInfo) return <Sun className="w-5 h-5 text-amber-400" />;
-    if (worldInfo.weather === 'THUNDER') return <CloudLightning className="w-5 h-5 text-purple-400" />;
-    if (worldInfo.weather === 'RAIN') return <CloudRain className="w-5 h-5 text-blue-400" />;
-    return <Sun className="w-5 h-5 text-amber-400" />;
+    if (!worldInfo) return <Sun className="w-5 h-5 text-[#ffaa00]" />;
+    if (worldInfo.weather === 'THUNDER') return <CloudLightning className="w-5 h-5 text-[#a855f7]" />;
+    if (worldInfo.weather === 'RAIN') return <CloudRain className="w-5 h-5 text-[#55ffff]" />;
+    return <Sun className="w-5 h-5 text-[#ffaa00]" />;
   };
 
   // Chart data preparation
@@ -116,342 +160,430 @@ export const Dashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <Skeleton className="h-9 w-64" />
-          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-8 w-32" />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
+            <Skeleton key={i} className="h-28" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-80" />
-          <Skeleton className="h-80" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-72" />
+          <Skeleton className="h-72" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-6 select-none">
       {/* Top Banner & Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#2e2f30] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">Server Overview</h1>
+            <h1 className="text-2xl font-heading tracking-wide text-white">SERVER OVERVIEW</h1>
             <StatusBadge
               status={serverInfo?.status === 'ONLINE' ? 'ONLINE' : 'WARN'}
               text={serverInfo?.status || 'ONLINE'}
             />
           </div>
-          <p className="text-sm text-slate-400 mt-1">
-            {serverInfo?.motd || 'Production Minecraft Server'} &bull; Minecraft {serverInfo?.minecraftVersion || '26.2'}
+          <p className="text-xs font-mono text-[#aaaaaa] mt-1">
+            {serverInfo?.motd || 'Minecraft Server'} · Minecraft {serverInfo?.minecraftVersion || '26.2'} · Fabric Loader {serverInfo?.fabricLoaderVersion || '0.19.3'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchData}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5 text-sm font-medium transition-all"
+            className="mc-btn px-3 py-1.5 text-xs"
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
+            <RefreshCw className="w-3.5 h-3.5" />
+            REFRESH
           </button>
           <Link
             to="/players"
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm shadow-lg shadow-brand-500/20 transition-all"
+            className="button button-primary px-3 py-1.5 text-xs"
           >
-            Manage Players
-            <ExternalLink className="w-4 h-4" />
+            MANAGE PLAYERS
+            <ExternalLink className="w-3.5 h-3.5 ml-1" />
           </Link>
         </div>
       </div>
 
       {/* Primary Key Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Server Health (TPS)"
+          title="Server Tick Rate"
           value={`${currentTps.toFixed(1)} / 20.0`}
           unit="TPS"
-          icon={<Zap className="w-5 h-5" />}
-          change={`${currentMspt.toFixed(1)} ms tick time`}
-          trend={currentTps >= 19.5 ? 'up' : currentTps >= 15.0 ? 'neutral' : 'down'}
+          icon={<Zap className="w-5 h-5 text-[#55ff55]" />}
+          change={`${currentMspt.toFixed(1)} ms tick computing`}
+          trend={currentTps >= 19.5 ? 'STABLE' : currentTps >= 15.0 ? 'WARNED' : 'LAGGING'}
           status={currentTps >= 19.5 ? 'healthy' : currentTps >= 15.0 ? 'warning' : 'danger'}
         />
 
         <MetricCard
-          title="Online Players"
+          title="Connected Players"
           value={`${currentPlayers} / ${maxPlayers}`}
           unit="Online"
-          icon={<Users className="w-5 h-5" />}
+          icon={<Users className="w-5 h-5 text-[#55ffff]" />}
           change={`${Math.round((currentPlayers / (maxPlayers || 1)) * 100)}% capacity`}
-          trend="neutral"
+          trend="STABLE"
           status="healthy"
+          progressPercent={Math.round((currentPlayers / (maxPlayers || 1)) * 100)}
         />
 
         <MetricCard
-          title="Memory Usage"
+          title="JVM Memory Pool"
           value={`${heapUsedMb} MB`}
           unit={`/ ${heapMaxMb} MB`}
-          icon={<HardDrive className="w-5 h-5" />}
+          icon={<HardDrive className="w-5 h-5 text-[#ffaa00]" />}
           change={`${Math.round((heapUsedMb / (heapMaxMb || 1)) * 100)}% allocated`}
-          trend="neutral"
+          trend={heapUsedMb / heapMaxMb > 0.85 ? 'HIGH' : 'NORMAL'}
           status={heapUsedMb / heapMaxMb > 0.85 ? 'danger' : heapUsedMb / heapMaxMb > 0.7 ? 'warning' : 'healthy'}
+          progressPercent={Math.round((heapUsedMb / (heapMaxMb || 1)) * 100)}
         />
 
         <MetricCard
           title="Process CPU"
-          value={`${currentCpu.toFixed(1)}%`}
-          unit="Usage"
-          icon={<Cpu className="w-5 h-5" />}
-          change={`Uptime: ${formatUptime(liveStats?.uptimeSeconds || serverInfo?.uptimeSeconds)}`}
-          trend="neutral"
+          value={`${currentCpu.toFixed(0)}%`}
+          unit="Used"
+          icon={<Cpu className="w-5 h-5 text-[#ff5555]" />}
+          change="System computing load"
+          trend="NORMAL"
           status={currentCpu > 80 ? 'danger' : currentCpu > 50 ? 'warning' : 'healthy'}
+          progressPercent={currentCpu}
         />
       </div>
 
-      {/* Secondary Environment & World Bar */}
-      <div className="glass-card p-5 rounded-2xl grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 border border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            {weatherIcon()}
+      {/* World State & Environment Banner */}
+      {worldInfo && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#1e1e1f] border-2 border-[#141415] flex items-center justify-center text-[#ffaa00]">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-heading text-[#aaaaaa]">IN-GAME CLOCK</p>
+              <p className="text-xl font-heading text-white">{formatWorldTime(worldInfo.timeOfDay)}</p>
+              <p className="text-[10px] font-mono text-[#888]">Day {worldInfo.dayCount || 1}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">World Weather</p>
-            <p className="text-sm font-bold text-white capitalize">{worldInfo?.weather?.toLowerCase() || 'Clear'}</p>
+
+          <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#1e1e1f] border-2 border-[#141415] flex items-center justify-center">
+              {weatherIcon()}
+            </div>
+            <div>
+              <p className="text-[10px] font-heading text-[#aaaaaa]">WEATHER CONDITION</p>
+              <p className="text-xl font-heading text-white uppercase">{worldInfo.weather || 'CLEAR'}</p>
+              <p className="text-[10px] font-mono text-[#888]">Atmosphere State</p>
+            </div>
+          </div>
+
+          <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#1e1e1f] border-2 border-[#141415] flex items-center justify-center text-[#55ff55]">
+              <Shield className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-heading text-[#aaaaaa]">WORLD DIFFICULTY</p>
+              <p className="text-xl font-heading text-white uppercase">{worldInfo.difficulty || 'NORMAL'}</p>
+              <p className="text-[10px] font-mono text-[#888]">Hardcore: {worldInfo.hardcore ? 'YES' : 'NO'}</p>
+            </div>
+          </div>
+
+          <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#1e1e1f] border-2 border-[#141415] flex items-center justify-center text-[#55ffff]">
+              <Server className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-heading text-[#aaaaaa]">TOTAL ENTITIES</p>
+              <p className="text-xl font-heading text-white">{worldInfo.totalEntities || 0}</p>
+              <p className="text-[10px] font-mono text-[#888]">Chunks: {worldInfo.loadedChunks || 0}</p>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-            <Clock className="w-5 h-5" />
+      {/* NEW FEATURE: SERVER WHITELIST MANAGEMENT */}
+      <div className="bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-[#222223] pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#1e1e1f] border-2 border-[#141415] shadow-[inset_1px_1px_0_#2b2b2c] flex items-center justify-center text-[#ffaa00]">
+              <Shield className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-heading text-white tracking-wide">
+                  SERVER WHITELIST MANAGEMENT
+                </h2>
+                <span className={`px-2 py-0.5 text-[10px] font-heading uppercase border ${
+                  whitelist.enabled
+                    ? 'bg-[#1e3816] text-[#55ff55] border-[#11240c]'
+                    : 'bg-[#421414] text-[#ff5555] border-[#260a0a]'
+                }`}>
+                  {whitelist.enabled ? 'WHITELIST: ON' : 'WHITELIST: OFF'}
+                </span>
+              </div>
+              <p className="text-xs font-mono text-[#aaaaaa]">
+                Manage player access control · {whitelist.count} player{whitelist.count === 1 ? '' : 's'} whitelisted
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">In-Game Time</p>
-            <p className="text-sm font-bold text-white">
-              {formatWorldTime(worldInfo?.worldTime)} (Day {worldInfo?.dayCount || 0})
-            </p>
-          </div>
+
+          <button
+            onClick={handleToggleWhitelist}
+            disabled={togglingWhitelist}
+            className={`px-4 py-2 text-xs font-heading ${
+              whitelist.enabled
+                ? 'mc-btn-danger'
+                : 'mc-btn-primary'
+            }`}
+          >
+            {togglingWhitelist
+              ? 'UPDATING...'
+              : whitelist.enabled
+              ? 'DEACTIVATE WHITELIST'
+              : 'ACTIVATE WHITELIST'}
+          </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-            <Shield className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Difficulty</p>
-            <p className="text-sm font-bold text-white capitalize">{worldInfo?.difficulty || 'Normal'}</p>
-          </div>
+        {/* Policy Notice: Additions only, no removal */}
+        <div className="p-2.5 bg-[#1a1a1b] border-2 border-[#141415] shadow-[inset_1px_1px_0_#0f0f10] flex items-center justify-between text-xs font-mono text-[#aaaaaa]">
+          <span className="flex items-center gap-2 text-[#ffaa00]">
+            <span className="font-heading">POLICY:</span> Add-Only Mode Active (Removing players from whitelist is restricted by server rule).
+          </span>
+          <span className="text-[10px] text-[#888] font-heading uppercase">Additions Allowed Only</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
-            <Server className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Fabric Loader</p>
-            <p className="text-sm font-bold text-white">{serverInfo?.fabricLoaderVersion || '0.19.3'}</p>
-          </div>
-        </div>
+        {/* Add Player to Whitelist Form */}
+        <form onSubmit={handleAddWhitelist} className="flex flex-col sm:flex-row items-center gap-2">
+          <input
+            type="text"
+            placeholder="Enter player username to whitelist (e.g. Steve, Alex, Notch)..."
+            value={newPlayerName}
+            onChange={(e) => setNewPlayerName(e.target.value)}
+            disabled={addingPlayer}
+            className="form-input flex-1 text-xs"
+          />
+          <button
+            type="submit"
+            disabled={addingPlayer || !newPlayerName.trim()}
+            className="button button-primary px-4 py-2 text-xs w-full sm:w-auto flex-shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            {addingPlayer ? 'ADDING TO SERVER...' : 'ADD TO WHITELIST'}
+          </button>
+        </form>
 
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-            <Activity className="w-5 h-5" />
+        {/* Current Whitelisted Players List */}
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-heading text-[#d0d1d4] uppercase tracking-wider">
+              WHITLESTED PLAYERS ROSTER ({whitelist.entries.length})
+            </h3>
+            <span className="text-[11px] font-mono text-[#888]">
+              {whitelist.entries.length} Total Registered
+            </span>
           </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">Java Runtime</p>
-            <p className="text-sm font-bold text-white truncate max-w-[120px]" title={serverInfo?.javaVersion}>
-              {serverInfo?.javaVersion || 'Java 25'}
-            </p>
-          </div>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
-            <Zap className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs text-slate-400 font-medium">JVM Vendor</p>
-            <p className="text-sm font-bold text-white truncate max-w-[120px]" title={serverInfo?.jvmVendor}>
-              {serverInfo?.jvmVendor || 'Microsoft'}
-            </p>
-          </div>
+          {whitelist.entries.length === 0 ? (
+            <div className="p-6 bg-[#1a1a1b] border-2 border-[#141415] text-center text-xs font-mono text-[#888888] italic">
+              No players currently in whitelist. Type a username above to whitelist players.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-64 overflow-y-auto p-1 bg-[#1a1a1b] border-2 border-[#141415] shadow-[inset_2px_2px_0_#0f0f10]">
+              {whitelist.entries.map((entry, idx) => (
+                <div
+                  key={entry.uuid || entry.name || idx}
+                  className="p-2 bg-[#252526] border-2 border-[#1e1e1f] shadow-[inset_1px_1px_0_#38393a,inset_-1px_-1px_0_#141415] flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <img
+                      src={`https://mc-heads.net/avatar/${entry.name}/24`}
+                      alt={entry.name}
+                      className="w-6 h-6 border border-black pixelated flex-shrink-0 bg-[#111112]"
+                      onError={(e: any) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-heading text-white truncate">{entry.name}</p>
+                      {entry.uuid && (
+                        <p className="text-[9px] font-mono text-[#888888] truncate" title={entry.uuid}>
+                          {entry.uuid.substring(0, 8)}...
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="text-[9px] px-1.5 py-0.5 bg-[#1e3816] text-[#55ff55] border border-[#11240c] font-heading flex-shrink-0">
+                    ALLOWED
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Real-time Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* TPS & MSPT History */}
-        <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between">
+      {/* Performance Telemetry Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* TPS & MSPT Real-Time Trend */}
+        <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-[#242425] pb-2">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                TPS & MSPT Performance
+              <h2 className="text-sm font-heading text-white flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[#55ff55]" />
+                TPS & TICK DURATION
               </h2>
-              <p className="text-xs text-slate-400">Target: 20.0 TPS · Max Tick: 50.0 ms</p>
+              <p className="text-[11px] font-mono text-[#aaaaaa]">Server computational velocity</p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" /> TPS
-              </span>
-              <span className="flex items-center gap-1.5 text-amber-400 font-medium">
-                <span className="w-2 h-2 rounded-full bg-amber-400" /> MSPT
-              </span>
+            <div className="flex items-center gap-3 text-xs font-mono">
+              <span className="text-[#55ff55]">■ TPS</span>
+              <span className="text-[#ffaa00]">■ MSPT</span>
             </div>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-60 w-full bg-[#1a1a1b] border-2 border-[#141415] p-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis yAxisId="left" domain={[0, 22]} stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" domain={[0, 60]} stroke="#64748b" fontSize={11} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2b" />
+                <XAxis dataKey="time" stroke="#777777" fontSize={10} tickLine={false} />
+                <YAxis yAxisId="left" domain={[0, 22]} stroke="#777777" fontSize={10} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" domain={[0, 60]} stroke="#777777" fontSize={10} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '0.75rem',
+                    backgroundColor: '#1e1e1f',
+                    borderColor: '#141415',
                     color: '#fff',
-                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+                    fontFamily: 'MinecraftRegular, monospace',
+                    fontSize: '11px',
                   }}
                 />
-                <Line yAxisId="left" type="monotone" dataKey="tps" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Line yAxisId="right" type="monotone" dataKey="mspt" stroke="#f59e0b" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line yAxisId="left" type="monotone" dataKey="tps" stroke="#55ff55" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line yAxisId="right" type="monotone" dataKey="mspt" stroke="#ffaa00" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Memory & CPU History */}
-        <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-[#242425] pb-2">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <HardDrive className="w-4 h-4 text-brand-400" />
-                Memory & CPU Utilization
+              <h2 className="text-sm font-heading text-white flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-[#55ffff]" />
+                MEMORY ALLOCATION
               </h2>
-              <p className="text-xs text-slate-400">JVM Heap in MB · Process CPU %</p>
+              <p className="text-[11px] font-mono text-[#aaaaaa]">JVM Heap in MB · Process CPU %</p>
             </div>
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1.5 text-brand-400 font-medium">
-                <span className="w-2 h-2 rounded-full bg-brand-400" /> Heap (MB)
-              </span>
-              <span className="flex items-center gap-1.5 text-indigo-400 font-medium">
-                <span className="w-2 h-2 rounded-full bg-indigo-400" /> CPU (%)
-              </span>
+            <div className="flex items-center gap-3 text-xs font-mono">
+              <span className="text-[#55ffff]">■ HEAP (MB)</span>
+              <span className="text-[#a855f7]">■ CPU (%)</span>
             </div>
           </div>
 
-          <div className="h-64 w-full">
+          <div className="h-60 w-full bg-[#1a1a1b] border-2 border-[#141415] p-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="heapGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis yAxisId="left" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke="#64748b" fontSize={11} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2b" />
+                <XAxis dataKey="time" stroke="#777777" fontSize={10} tickLine={false} />
+                <YAxis yAxisId="left" stroke="#777777" fontSize={10} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke="#777777" fontSize={10} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '0.75rem',
+                    backgroundColor: '#1e1e1f',
+                    borderColor: '#141415',
                     color: '#fff',
+                    fontFamily: 'MinecraftRegular, monospace',
+                    fontSize: '11px',
                   }}
                 />
-                <Area yAxisId="left" type="monotone" dataKey="heapUsed" stroke="#38bdf8" fillOpacity={1} fill="url(#heapGradient)" strokeWidth={2} isAnimationActive={false} />
-                <Line yAxisId="right" type="monotone" dataKey="cpuProcess" stroke="#818cf8" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Area yAxisId="left" type="monotone" dataKey="heapUsed" stroke="#55ffff" fill="#55ffff" fillOpacity={0.2} strokeWidth={2} isAnimationActive={false} />
+                <Line yAxisId="right" type="monotone" dataKey="cpuProcess" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Online Players History & Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Player Count History */}
-        <div className="lg:col-span-2 glass-card p-6 rounded-2xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between">
+      {/* Player Concurrency Trend & Live Activity Preview */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-[#242425] pb-2">
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <Users className="w-4 h-4 text-emerald-400" />
-                Player Concurrency Trend
+              <h2 className="text-sm font-heading text-white flex items-center gap-2">
+                <Users className="w-4 h-4 text-[#55ff55]" />
+                PLAYER CONCURRENCY
               </h2>
-              <p className="text-xs text-slate-400">Concurrent connected players over the last hour</p>
+              <p className="text-[11px] font-mono text-[#aaaaaa]">Connected players past hour</p>
             </div>
-            <Link to="/players" className="text-xs font-semibold text-brand-400 hover:text-brand-300 flex items-center gap-1">
-              View All Players &rarr;
+            <Link to="/players" className="text-xs font-heading text-[#55ff55] hover:underline">
+              PLAYERS ROSTER →
             </Link>
           </div>
 
-          <div className="h-56 w-full">
+          <div className="h-52 w-full bg-[#1a1a1b] border-2 border-[#141415] p-2">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="playersGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis allowDecimals={false} stroke="#64748b" fontSize={11} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2b" />
+                <XAxis dataKey="time" stroke="#777777" fontSize={10} tickLine={false} />
+                <YAxis allowDecimals={false} stroke="#777777" fontSize={10} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '0.75rem',
+                    backgroundColor: '#1e1e1f',
+                    borderColor: '#141415',
                     color: '#fff',
+                    fontFamily: 'MinecraftRegular, monospace',
+                    fontSize: '11px',
                   }}
                 />
-                <Area type="stepAfter" dataKey="players" stroke="#10b981" fillOpacity={1} fill="url(#playersGradient)" strokeWidth={2} isAnimationActive={false} />
+                <Area type="stepAfter" dataKey="players" stroke="#55ff55" fill="#55ff55" fillOpacity={0.25} strokeWidth={2} isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Live Activity Feed Sneak Peek */}
-        <div className="glass-card p-6 rounded-2xl border border-white/5 flex flex-col justify-between space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Activity className="w-4 h-4 text-purple-400" />
-              Live Activity
+        {/* Live Activity Feed Preview */}
+        <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4 flex flex-col justify-between space-y-3">
+          <div className="flex items-center justify-between border-b border-[#242425] pb-2">
+            <h2 className="text-sm font-heading text-white flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#ff55ff]" />
+              RECENT EVENTS
             </h2>
-            <Link to="/activity" className="text-xs font-semibold text-brand-400 hover:text-brand-300">
-              Full Feed &rarr;
+            <Link to="/activity" className="text-xs font-heading text-[#55ff55] hover:underline">
+              ALL →
             </Link>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-hidden">
+          <div className="flex-1 space-y-2 overflow-hidden">
             {liveActivity.length === 0 ? (
-              <p className="text-sm text-slate-500 italic py-8 text-center">No recent events recorded</p>
+              <p className="text-xs font-mono text-[#888888] italic py-6 text-center">
+                No recent activity recorded
+              </p>
             ) : (
-              liveActivity.slice(0, 5).map((evt) => (
-                <div key={evt.id} className="p-3 rounded-xl bg-slate-800/40 border border-white/5 space-y-1">
+              liveActivity.slice(0, 4).map((evt) => (
+                <div key={evt.id} className="p-2 bg-[#252526] border border-[#1e1e1f] space-y-0.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-brand-300">{evt.title}</span>
-                    <span className="text-[10px] text-slate-500 font-mono">
+                    <span className="text-[11px] font-heading text-[#55ff55] truncate">{evt.title}</span>
+                    <span className="text-[10px] text-[#888888] font-mono">
                       {formatTime(evt.timestamp)}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 truncate">{evt.description}</p>
+                  <p className="text-[11px] font-mono text-[#cccccc] truncate">{evt.description}</p>
                 </div>
               ))
             )}
           </div>
 
-          <div className="pt-2 border-t border-white/5 text-center">
+          <div className="pt-2 border-t border-[#242425] text-center">
             <Link
               to="/logs"
-              className="text-xs text-slate-400 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              className="text-xs font-heading text-[#aaaaaa] hover:text-white flex items-center justify-center gap-1"
             >
-              Open Server Console Logs &rarr;
+              SERVER CONSOLE & COMMANDS →
             </Link>
           </div>
         </div>

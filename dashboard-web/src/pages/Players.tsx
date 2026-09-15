@@ -4,17 +4,12 @@ import {
   Search,
   Filter,
   ArrowUpDown,
-  MoreVertical,
   UserX,
   Ban,
   Skull,
-  ShieldAlert,
   ShieldCheck,
   Send,
-  ExternalLink,
   RefreshCw,
-  Heart,
-  Utensils,
   Wifi,
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -164,34 +159,39 @@ export const Players: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 select-none animate-fadeIn">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#2e2f30] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">Player Management</h1>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20">
-              {players.length} Online
+            <h1 className="text-2xl font-heading tracking-wide text-white flex items-center gap-2">
+              <Users className="w-6 h-6 text-[#55ff55]" />
+              ONLINE PLAYERS
+            </h1>
+            <span className="px-2 py-0.5 text-[10px] font-heading bg-[#1e3816] text-[#55ff55] border border-[#11240c]">
+              {players.length} CONNECTED
             </span>
           </div>
-          <p className="text-sm text-slate-400 mt-1">Real-time online player monitoring, latency, and session tracking.</p>
+          <p className="text-xs font-mono text-[#aaaaaa] mt-1">
+            Real-time online player monitoring, telemetry, administrative actions, and teleportation.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={fetchPlayers}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5 text-sm font-medium transition-all"
+            className="mc-btn px-3 py-1.5 text-xs"
           >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
+            <RefreshCw className="w-3.5 h-3.5" />
+            REFRESH
           </button>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="glass-card p-4 rounded-2xl border border-white/5 flex flex-col md:flex-row items-center gap-4 justify-between">
+      <div className="bg-[#313233] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-3 flex flex-col md:flex-row items-center gap-3 justify-between">
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#888888] absolute left-2.5 top-2.5" />
           <input
             type="text"
             placeholder="Search username, UUID, group..."
@@ -200,19 +200,19 @@ export const Players: React.FC = () => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-dark-950/60 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500 transition-colors"
+            className="form-input pl-8 py-1 text-xs h-8"
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <Filter className="w-4 h-4 text-slate-400" />
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Filter className="w-4 h-4 text-[#aaaaaa]" />
           <select
             value={filterGameMode}
             onChange={(e) => {
               setFilterGameMode(e.target.value);
               setPage(1);
             }}
-            className="px-3.5 py-2 rounded-xl bg-dark-950/60 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+            className="form-input px-2 py-1 text-xs h-8"
           >
             <option value="ALL">All Game Modes</option>
             <option value="survival">Survival</option>
@@ -224,100 +224,161 @@ export const Players: React.FC = () => {
       </div>
 
       {/* Players Table */}
-      <div className="glass-card rounded-2xl border border-white/5 overflow-hidden shadow-2xl">
+      <div className="bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-dark-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-white/5">
+          <table className="w-full text-left text-xs font-mono">
+            <thead className="bg-[#242425] text-xs font-heading uppercase tracking-wider text-[#aaaaaa] border-b-2 border-[#141415]">
               <tr>
-                <th className="px-6 py-4">Player</th>
+                <th className="px-4 py-3">PLAYER</th>
+                <th className="px-4 py-3">MODE</th>
                 <th
                   onClick={() => handleSort('ping')}
-                  className="px-4 py-4 cursor-pointer hover:text-white transition-colors"
+                  className="px-4 py-3 cursor-pointer hover:text-white"
                 >
-                  <div className="flex items-center gap-1.5">
-                    Ping <ArrowUpDown className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-1">
+                    PING <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
                 <th
                   onClick={() => handleSort('onlineDuration')}
-                  className="px-4 py-4 cursor-pointer hover:text-white transition-colors"
+                  className="px-4 py-3 cursor-pointer hover:text-white"
                 >
-                  <div className="flex items-center gap-1.5">
-                    Playtime <ArrowUpDown className="w-3.5 h-3.5" />
+                  <div className="flex items-center gap-1">
+                    PLAYTIME <ArrowUpDown className="w-3 h-3" />
                   </div>
                 </th>
+                <th className="px-4 py-3 text-right">ACTIONS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[#1e1e1f]">
               {loading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i}>
-                    <td colSpan={3} className="px-6 py-4">
-                      <Skeleton className="h-8 w-full" />
+                [...Array(3)].map((_, i) => (
+                  <tr key={i} className="bg-[#1e1e1f]">
+                    <td colSpan={5} className="px-4 py-3">
+                      <Skeleton className="h-6 w-full" />
                     </td>
                   </tr>
                 ))
               ) : paginatedPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-slate-500 italic">
-                    {players.length === 0 ? 'No players currently online' : 'No matching players found'}
+                  <td colSpan={5} className="px-4 py-8 text-center text-[#777777] italic font-mono">
+                    {players.length === 0 ? 'No players currently online on this server' : 'No matching players found'}
                   </td>
                 </tr>
               ) : (
                 paginatedPlayers.map((player) => (
-                  <tr key={player.uuid} className="hover:bg-slate-800/30 transition-colors group">
-                    {/* Player Name & Prefix */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
+                  <tr key={player.uuid} className="hover:bg-[#28292a] bg-[#1e1e1f] transition-none">
+                    {/* Player Name & Head */}
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2.5">
                         <img
-                          src={`https://mc-heads.net/avatar/${player.uuid}/36`}
+                          src={`https://mc-heads.net/avatar/${player.username}/32`}
                           alt={player.username}
-                          className="w-9 h-9 rounded-lg shadow-md bg-dark-950 border border-white/10 flex-shrink-0"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
+                          className="w-7 h-7 border border-black pixelated flex-shrink-0 bg-[#111112]"
+                          onError={(e: any) => {
+                            e.target.style.display = 'none';
                           }}
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {player.prefix && (
-                              <span className="text-xs font-semibold">
+                              <span className="text-xs font-mono">
                                 <FormattedText text={player.prefix} />
                               </span>
                             )}
-                            <span className="font-bold text-white flex items-center gap-1">
+                            <span className="font-heading text-white flex items-center gap-1">
                               {player.username}
                               {player.isOp && (
-                                <span className="px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-mono">
+                                <span className="px-1 py-0.2 bg-[#a82323] text-white text-[9px] font-heading border border-[#5c1111]">
                                   OP
                                 </span>
                               )}
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-500 font-mono truncate max-w-[140px]" title={player.uuid}>
+                          <p className="text-[10px] text-[#777777] font-mono truncate max-w-[140px]" title={player.uuid}>
                             {player.uuid}
                           </p>
                         </div>
                       </div>
                     </td>
 
+                    {/* GameMode */}
+                    <td className="px-4 py-2.5">
+                      <span className="px-1.5 py-0.5 bg-[#252526] border border-[#141415] text-[10px] font-heading uppercase text-[#d0d1d4]">
+                        {player.gameMode || 'SURVIVAL'}
+                      </span>
+                    </td>
+
                     {/* Ping */}
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-2.5">
                       <span
-                        className={`flex items-center gap-1.5 text-xs font-mono font-medium ${player.ping < 60
-                            ? 'text-emerald-400'
+                        className={`flex items-center gap-1 text-xs font-mono ${
+                          player.ping < 60
+                            ? 'text-[#55ff55]'
                             : player.ping < 120
-                              ? 'text-amber-400'
-                              : 'text-rose-400'
-                          }`}
+                            ? 'text-[#ffff55]'
+                            : 'text-[#ff5555]'
+                        }`}
                       >
-                        <Wifi className="w-3.5 h-3.5" />
+                        <Wifi className="w-3 h-3" />
                         {player.ping} ms
                       </span>
                     </td>
 
                     {/* Playtime */}
-                    <td className="px-4 py-4 text-xs font-medium text-slate-300">
+                    <td className="px-4 py-2.5 text-xs text-[#cccccc]">
                       {formatDuration(player.onlineDuration)}
+                    </td>
+
+                    {/* Action Controls */}
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1 flex-wrap">
+                        <button
+                          onClick={() => setActiveModal({ type: 'teleport', player })}
+                          className="mc-btn px-2 py-0.5 text-[10px]"
+                          title="Teleport"
+                        >
+                          TP
+                        </button>
+                        {player.isOp ? (
+                          <button
+                            onClick={() => setActiveModal({ type: 'deop', player })}
+                            className="mc-btn px-2 py-0.5 text-[10px]"
+                            title="De-OP"
+                          >
+                            DE-OP
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setActiveModal({ type: 'op', player })}
+                            className="mc-btn px-2 py-0.5 text-[10px] bg-[#3c8527] text-white"
+                            title="Grant OP"
+                          >
+                            OP
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setActiveModal({ type: 'kill', player })}
+                          className="mc-btn px-2 py-0.5 text-[10px] bg-[#a82323] text-white"
+                          title="Kill Player"
+                        >
+                          KILL
+                        </button>
+                        <button
+                          onClick={() => setActiveModal({ type: 'kick', player })}
+                          className="mc-btn px-2 py-0.5 text-[10px]"
+                          title="Kick Player"
+                        >
+                          KICK
+                        </button>
+                        <button
+                          onClick={() => setActiveModal({ type: 'ban', player })}
+                          className="mc-btn-danger px-2 py-0.5 text-[10px]"
+                          title="Ban Player"
+                        >
+                          BAN
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -328,28 +389,28 @@ export const Players: React.FC = () => {
 
         {/* Pagination Footer */}
         {totalPages > 1 && (
-          <div className="p-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+          <div className="p-3 border-t-2 border-[#141415] bg-[#242425] flex items-center justify-between text-xs font-mono text-[#aaaaaa]">
             <span>
               Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredPlayers.length)} of{' '}
-              {filteredPlayers.length} players
+              {filteredPlayers.length}
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <button
                 disabled={page === 1}
                 onClick={() => setPage(page - 1)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white transition-colors"
+                className="mc-btn px-2.5 py-1 text-xs"
               >
-                Previous
+                PREV
               </button>
-              <span className="px-2 font-mono">
+              <span className="px-2 font-heading">
                 {page} / {totalPages}
               </span>
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage(page + 1)}
-                className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 text-white transition-colors"
+                className="mc-btn px-2.5 py-1 text-xs"
               >
-                Next
+                NEXT
               </button>
             </div>
           </div>
@@ -366,59 +427,59 @@ export const Players: React.FC = () => {
           variant={activeModal.type === 'ban' || activeModal.type === 'kill' ? 'danger' : 'warning'}
           title={
             activeModal.type === 'kick'
-              ? `Kick ${activeModal.player.username}`
+              ? `KICK ${activeModal.player.username}`
               : activeModal.type === 'ban'
-                ? `Ban ${activeModal.player.username}`
-                : activeModal.type === 'kill'
-                  ? `Kill ${activeModal.player.username}`
-                  : activeModal.type === 'op'
-                    ? `Grant OP to ${activeModal.player.username}`
-                    : activeModal.type === 'deop'
-                      ? `Revoke OP from ${activeModal.player.username}`
-                      : `Teleport ${activeModal.player.username}`
+              ? `BAN ${activeModal.player.username}`
+              : activeModal.type === 'kill'
+              ? `KILL ${activeModal.player.username}`
+              : activeModal.type === 'op'
+              ? `GRANT OP TO ${activeModal.player.username}`
+              : activeModal.type === 'deop'
+              ? `REVOKE OP FROM ${activeModal.player.username}`
+              : `TELEPORT ${activeModal.player.username}`
           }
           message={
             activeModal.type === 'kick' || activeModal.type === 'ban' ? (
-              <div className="space-y-3">
-                <p className="text-slate-300 text-sm">Provide an optional reason for this action:</p>
+              <div className="space-y-2">
+                <p className="text-white text-xs">Enter administrative reason for this action:</p>
                 <input
                   type="text"
                   placeholder="Reason..."
                   value={actionReason}
                   onChange={(e) => setActionReason(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-dark-950 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-500"
+                  className="form-input w-full text-xs"
                 />
               </div>
             ) : activeModal.type === 'teleport' ? (
-              <div className="space-y-3">
-                <p className="text-slate-300 text-sm">Enter destination coordinates:</p>
+              <div className="space-y-2">
+                <p className="text-white text-xs">Target coordinates:</p>
                 <div className="grid grid-cols-3 gap-2">
                   <input
                     type="number"
                     placeholder="X"
                     value={teleportCoords.x}
                     onChange={(e) => setTeleportCoords({ ...teleportCoords, x: Number(e.target.value) })}
-                    className="px-3 py-1.5 rounded-lg bg-dark-950 border border-white/10 text-white text-xs"
+                    className="form-input text-xs"
                   />
                   <input
                     type="number"
                     placeholder="Y"
                     value={teleportCoords.y}
                     onChange={(e) => setTeleportCoords({ ...teleportCoords, y: Number(e.target.value) })}
-                    className="px-3 py-1.5 rounded-lg bg-dark-950 border border-white/10 text-white text-xs"
+                    className="form-input text-xs"
                   />
                   <input
                     type="number"
                     placeholder="Z"
                     value={teleportCoords.z}
                     onChange={(e) => setTeleportCoords({ ...teleportCoords, z: Number(e.target.value) })}
-                    className="px-3 py-1.5 rounded-lg bg-dark-950 border border-white/10 text-white text-xs"
+                    className="form-input text-xs"
                   />
                 </div>
                 <select
                   value={teleportCoords.dimension}
                   onChange={(e) => setTeleportCoords({ ...teleportCoords, dimension: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg bg-dark-950 border border-white/10 text-white text-xs"
+                  className="form-input w-full text-xs"
                 >
                   <option value="minecraft:overworld">Overworld</option>
                   <option value="minecraft:the_nether">The Nether</option>

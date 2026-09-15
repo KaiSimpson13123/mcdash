@@ -34,6 +34,46 @@ public class AuthService {
         return result.verified;
     }
 
+    public boolean verifyUser(String username, String rawPassword) {
+        if (username == null || rawPassword == null) {
+            return false;
+        }
+        if (isSetupRequired()) {
+            return false;
+        }
+        DashboardConfig config = configManager.getConfig();
+        String u = username.trim();
+
+        // 1. Sudo user authentication
+        if ("sudo".equalsIgnoreCase(u)) {
+            String sudoHash = config.getSudoPasswordHash();
+            if (sudoHash != null && !sudoHash.trim().isEmpty()) {
+                BCrypt.Result result = BCrypt.verifyer().verify(rawPassword.toCharArray(), sudoHash);
+                if (result.verified) return true;
+            }
+            // Fallback to admin setup password if sudo hash not yet set
+            String adminHash = config.getPasswordHash();
+            if (adminHash != null && !adminHash.trim().isEmpty()) {
+                BCrypt.Result result = BCrypt.verifyer().verify(rawPassword.toCharArray(), adminHash);
+                if (result.verified) return true;
+            }
+            return "sudo".equals(rawPassword);
+        }
+
+        // 2. Configured admin user authentication
+        String configuredUser = config.getUsername();
+        if (u.equalsIgnoreCase(configuredUser)) {
+            String hash = config.getPasswordHash();
+            if (hash == null || hash.trim().isEmpty()) {
+                return false;
+            }
+            BCrypt.Result result = BCrypt.verifyer().verify(rawPassword.toCharArray(), hash);
+            return result.verified;
+        }
+
+        return false;
+    }
+
     public boolean completeSetup(String username, String password) {
         if (username == null || username.trim().isEmpty() || password == null || password.length() < 6) {
             return false;
@@ -43,9 +83,13 @@ public class AuthService {
         DashboardConfig config = configManager.getConfig();
         config.setUsername(username.trim());
         config.setPasswordHash(hash);
+        config.setSudoUsername("sudo");
+        if (config.getSudoPasswordHash() == null || config.getSudoPasswordHash().trim().isEmpty()) {
+            config.setSudoPasswordHash(hash);
+        }
         boolean saved = configManager.save();
         if (saved) {
-            LOGGER.info("Setup completed successfully for user: {}", username.trim());
+            LOGGER.info("Setup completed successfully for user: {} (and sudo user ready)", username.trim());
         } else {
             LOGGER.error("Failed to save credentials during setup.");
         }
@@ -65,6 +109,15 @@ public class AuthService {
             config.setPasswordHash(hashPassword(newPassword));
         }
 
+        return configManager.save();
+    }
+
+    public boolean updateSudoPassword(String newPassword) {
+        if (newPassword == null || newPassword.length() < 4) {
+            return false;
+        }
+        DashboardConfig config = configManager.getConfig();
+        config.setSudoPasswordHash(hashPassword(newPassword));
         return configManager.save();
     }
 }

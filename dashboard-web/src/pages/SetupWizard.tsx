@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { ShieldCheck, User, Lock, Check, ArrowRight, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, User, Lock, Check } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
@@ -17,7 +17,7 @@ export const SetupWizard: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (isLoading) {
-    return <div className="text-center text-slate-400">Loading...</div>;
+    return <div className="text-center font-heading text-white">LOADING SETUP...</div>;
   }
 
   if (!isSetupRequired && !isAuthenticated) {
@@ -54,7 +54,7 @@ export const SetupWizard: React.FC = () => {
       setErrorMsg(null);
       await setup(username.trim(), password);
       setStep(3);
-      toastSuccess('Administrator account created successfully!', 'Setup Complete');
+      toastSuccess('Administrator and sudo accounts initialized!', 'Setup Complete');
       setTimeout(() => {
         navigate('/');
       }, 1500);
@@ -68,26 +68,26 @@ export const SetupWizard: React.FC = () => {
   };
 
   return (
-    <div className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10">
+    <div className="card p-6 bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] select-none">
       {/* Wizard Steps indicator */}
-      <div className="flex items-center justify-between mb-8 px-4">
+      <div className="flex items-center justify-between mb-6 px-2">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+              className={`w-8 h-8 flex items-center justify-center font-heading text-xs border-2 border-[#141415] ${
                 step === s
-                  ? 'bg-brand-500 text-dark-950 ring-4 ring-brand-500/20 shadow-lg shadow-brand-500/30'
+                  ? 'bg-[#3c8527] text-white shadow-[inset_1px_1px_0_#5db53b]'
                   : step > s
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-slate-800 text-slate-400'
+                  ? 'bg-[#218306] text-white'
+                  : 'bg-[#1e1e1f] text-[#888888]'
               }`}
             >
               {step > s ? <Check className="w-4 h-4" /> : s}
             </div>
             {s < 3 && (
               <div
-                className={`w-16 sm:w-24 h-0.5 mx-2 transition-all ${
-                  step > s ? 'bg-emerald-500' : 'bg-slate-800'
+                className={`w-16 sm:w-24 h-1 mx-2 border-y border-[#141415] ${
+                  step > s ? 'bg-[#3c8527]' : 'bg-[#1e1e1f]'
                 }`}
               />
             )}
@@ -96,117 +96,122 @@ export const SetupWizard: React.FC = () => {
       </div>
 
       <div className="text-center mb-6">
-        <div className="inline-flex p-3 rounded-2xl bg-brand-500/10 text-brand-400 border border-brand-500/20 mb-3">
+        <div className="inline-flex p-3 bg-[#1e1e1f] border-2 border-[#141415] text-[#55ff55] mb-2 shadow-[inset_1px_1px_0_#2b2b2c]">
           <ShieldCheck className="w-6 h-6" />
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">Initial Setup Wizard</h2>
-        <p className="text-xs text-slate-400 mt-1">Configure initial credentials to secure your server dashboard</p>
+        <h2 className="text-xl font-heading text-white tracking-wider">
+          SERVER SETUP WIZARD
+        </h2>
+        <p className="text-xs font-mono text-[#aaaaaa] mt-1">
+          Configure security credentials for your Minecraft 26.2 Server
+        </p>
       </div>
 
       {errorMsg && (
-        <div className="mb-5 p-3 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-xs">
+        <div className="mb-4 p-3 bg-[#421414] border-2 border-[#ff5555] text-[#ff5555] text-xs font-mono">
           {errorMsg}
         </div>
       )}
 
       {step === 1 && (
         <form onSubmit={handleStep1Next} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Administrator Username
+          <div className="form-group mb-3">
+            <label className="form-label text-xs font-heading text-[#d0d1d4]">
+              ADMIN USERNAME
             </label>
             <div className="relative">
-              <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+              <User className="w-4 h-4 text-[#888888] absolute left-3 top-3 pointer-events-none" />
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                required
-                className="glass-input w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
                 placeholder="admin"
-                autoFocus
+                required
+                className="form-input pl-9 text-xs"
               />
             </div>
-            <p className="text-[11px] text-slate-400 mt-1.5">This user will have full dashboard administrative rights.</p>
+          </div>
+
+          <div className="p-3 bg-[#1a1a1b] border-2 border-[#141415] text-xs font-mono text-[#aaaaaa] space-y-1">
+            <p className="text-white font-heading text-[11px]">INITIALIZED ACCOUNTS:</p>
+            <p>· Administrator: <span className="text-[#55ff55]">{username || 'admin'}</span></p>
+            <p>· Superuser: <span className="text-[#fdaa00]">sudo</span> (Console command executor)</p>
           </div>
 
           <button
             type="submit"
-            className="w-full py-3 px-4 rounded-xl bg-brand-500 hover:bg-brand-400 text-dark-950 font-bold text-sm tracking-wide shadow-lg shadow-brand-500/20 transition-all flex items-center justify-center space-x-2 mt-4"
+            className="button button-primary w-full py-2 text-sm font-heading"
           >
-            <span>Next: Set Password</span>
-            <ArrowRight className="w-4 h-4" />
+            CONTINUE TO PASSWORD
           </button>
         </form>
       )}
 
       {step === 2 && (
         <form onSubmit={handleStep2Next} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Dashboard Password
+          <div className="form-group mb-3">
+            <label className="form-label text-xs font-heading text-[#d0d1d4]">
+              PASSWORD (MINIMUM 6 CHARACTERS)
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+              <Lock className="w-4 h-4 text-[#888888] absolute left-3 top-3 pointer-events-none" />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
                 required
-                minLength={6}
-                placeholder="At least 6 characters"
-                className="glass-input w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
-                autoFocus
+                className="form-input pl-9 text-xs"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-              Confirm Password
+          <div className="form-group mb-4">
+            <label className="form-label text-xs font-heading text-[#d0d1d4]">
+              CONFIRM PASSWORD
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+              <Lock className="w-4 h-4 text-[#888888] absolute left-3 top-3 pointer-events-none" />
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
                 required
-                minLength={6}
-                placeholder="Re-enter password"
-                className="glass-input w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
+                className="form-input pl-9 text-xs"
               />
             </div>
           </div>
 
-          <div className="flex items-center space-x-3 pt-2">
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="py-3 px-4 rounded-xl text-slate-400 hover:text-white bg-slate-800/40 text-sm font-medium transition-colors flex items-center space-x-1"
+              disabled={submitting}
+              className="mc-btn flex-1 py-2 text-xs"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
+              BACK
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 py-3 px-4 rounded-xl bg-brand-500 hover:bg-brand-400 text-dark-950 font-bold text-sm tracking-wide shadow-lg shadow-brand-500/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+              className="button button-primary flex-1 py-2 text-xs"
             >
-              <span>{submitting ? 'Generating BCrypt Hash...' : 'Complete Setup'}</span>
-              <Check className="w-4 h-4" />
+              {submitting ? 'SAVING...' : 'COMPLETE SETUP'}
             </button>
           </div>
         </form>
       )}
 
       {step === 3 && (
-        <div className="text-center py-6">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 animate-bounce">
-            <Check className="w-6 h-6" />
+        <div className="text-center py-6 space-y-3">
+          <div className="w-12 h-12 mx-auto bg-[#3c8527] border-2 border-[#141415] text-white flex items-center justify-center font-heading text-lg">
+            ✓
           </div>
-          <h3 className="text-lg font-bold text-white mb-1">Setup Complete!</h3>
-          <p className="text-xs text-slate-400 mb-4">Credentials saved with BCrypt. Redirecting to your dashboard...</p>
+          <h3 className="text-lg font-heading text-white">SETUP COMPLETE!</h3>
+          <p className="text-xs font-mono text-[#aaaaaa]">
+            Redirecting to server dashboard...
+          </p>
         </div>
       )}
     </div>

@@ -1,15 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import {
   Settings as SettingsIcon,
-  Shield,
   Server,
   Lock,
   Key,
   CheckCircle,
-  ToggleLeft,
-  ToggleRight,
-  RefreshCw,
-  Info,
+  Terminal,
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,12 +13,13 @@ import { useToast } from '../contexts/ToastContext';
 import { Skeleton } from '../components/Skeleton';
 
 export const Settings: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isSudo } = useAuth();
   const { addToast } = useToast();
   const [serverInfo, setServerInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Password reset state
+  const [targetAccount, setTargetAccount] = useState<'admin' | 'sudo'>('admin');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPass, setChangingPass] = useState(false);
@@ -55,12 +52,11 @@ export const Settings: React.FC = () => {
 
     setChangingPass(true);
     try {
-      // Calls setup endpoint to update password hash
       await api.setup({
-        username: user || 'admin',
+        username: targetAccount,
         password: newPassword,
       });
-      addToast('success', 'Admin credentials updated successfully');
+      addToast('success', `${targetAccount.toUpperCase()} credentials updated successfully!`);
       setNewPassword('');
       setConfirmPassword('');
     } catch (e: any) {
@@ -81,56 +77,88 @@ export const Settings: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-6 select-none animate-fadeIn">
       {/* Top Header */}
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
-          <SettingsIcon className="w-8 h-8 text-brand-400" />
-          Settings & Configuration
+      <div className="bg-[#2e2f30] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4">
+        <h1 className="text-2xl font-heading tracking-wide text-white flex items-center gap-2">
+          <SettingsIcon className="w-6 h-6 text-[#ffaa00]" />
+          SETTINGS & CONFIGURATION
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Mod configuration, security credentials, platform details, and feature modules.
+        <p className="text-xs font-mono text-[#aaaaaa] mt-1">
+          Server authentication, operator accounts, security policies, and feature modules.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Security & Password Card */}
-        <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20">
+        <div className="bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] p-5 space-y-4">
+          <div className="flex items-center gap-3 border-b-2 border-[#222223] pb-3">
+            <div className="w-9 h-9 bg-[#1e1e1f] border-2 border-[#141415] flex items-center justify-center text-[#55ff55]">
               <Lock className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">Security & Credentials</h2>
-              <p className="text-xs text-slate-400">Authenticated as: <span className="text-brand-300 font-semibold">{user || 'admin'}</span></p>
+              <h2 className="text-sm font-heading text-white">CREDENTIALS MANAGEMENT</h2>
+              <p className="text-xs font-mono text-[#aaaaaa]">
+                Active user: <span className="text-[#55ff55] font-bold">{user || 'admin'}</span> {isSudo && '(sudo operator)'}
+              </p>
             </div>
           </div>
 
-          <form onSubmit={handlePasswordUpdate} className="space-y-4">
+          <form onSubmit={handlePasswordUpdate} className="space-y-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                New Password
+              <label className="block text-[11px] font-heading text-[#d0d1d4] uppercase mb-1">
+                TARGET OPERATOR ACCOUNT
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTargetAccount('admin')}
+                  className={`py-1.5 text-xs font-heading border ${
+                    targetAccount === 'admin'
+                      ? 'bg-[#3c8527] text-white border-white'
+                      : 'bg-[#252526] text-[#aaaaaa] border-[#1e1e1f]'
+                  }`}
+                >
+                  ADMIN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetAccount('sudo')}
+                  className={`py-1.5 text-xs font-heading border ${
+                    targetAccount === 'sudo'
+                      ? 'bg-[#7345e5] text-white border-white'
+                      : 'bg-[#252526] text-[#aaaaaa] border-[#1e1e1f]'
+                  }`}
+                >
+                  SUDO (CONSOLE)
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-heading text-[#d0d1d4] uppercase mb-1">
+                NEW PASSWORD FOR {targetAccount.toUpperCase()}
               </label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password..."
-                className="w-full px-3.5 py-2 rounded-xl bg-dark-950 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                placeholder="Minimum 6 characters..."
+                className="form-input text-xs"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                Confirm Password
+              <label className="block text-[11px] font-heading text-[#d0d1d4] uppercase mb-1">
+                CONFIRM NEW PASSWORD
               </label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password..."
-                className="w-full px-3.5 py-2 rounded-xl bg-dark-950 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-500 transition-colors"
+                placeholder="Retype password..."
+                className="form-input text-xs"
                 required
               />
             </div>
@@ -138,105 +166,107 @@ export const Settings: React.FC = () => {
             <button
               type="submit"
               disabled={changingPass || !newPassword}
-              className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all flex items-center justify-center gap-2"
+              className="button button-primary w-full py-2 text-xs font-heading flex items-center justify-center gap-1.5"
             >
-              <Key className="w-4 h-4" />
-              {changingPass ? 'Updating...' : 'Update Password'}
+              <Key className="w-3.5 h-3.5" />
+              {changingPass ? 'UPDATING...' : `UPDATE ${targetAccount.toUpperCase()} PASSWORD`}
             </button>
           </form>
 
-          <div className="pt-4 border-t border-white/5 space-y-2 text-xs text-slate-400">
-            <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-              <CheckCircle className="w-4 h-4" /> BCrypt 12-round salted hashing
+          <div className="pt-3 border-t border-[#242425] space-y-1 text-xs font-mono text-[#aaaaaa]">
+            <div className="flex items-center gap-1.5 text-[#55ff55]">
+              <CheckCircle className="w-3.5 h-3.5" /> BCrypt 12-round salted hashing
             </div>
-            <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-              <CheckCircle className="w-4 h-4" /> HttpOnly Secure Session Cookies
+            <div className="flex items-center gap-1.5 text-[#55ff55]">
+              <CheckCircle className="w-3.5 h-3.5" /> HttpOnly SameSite Session Cookies
             </div>
-            <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-              <CheckCircle className="w-4 h-4" /> CSRF Token Route Validation
+            <div className="flex items-center gap-1.5 text-[#55ff55]">
+              <CheckCircle className="w-3.5 h-3.5" /> sudo console command privilege enforced
             </div>
           </div>
         </div>
 
         {/* Configuration Overview Card */}
-        <div className="lg:col-span-2 glass-card p-6 rounded-2xl border border-white/5 space-y-6">
-          <div className="flex items-center justify-between">
+        <div className="lg:col-span-2 bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] p-5 space-y-4">
+          <div className="flex items-center justify-between border-b-2 border-[#222223] pb-3">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <div className="w-9 h-9 bg-[#1e1e1f] border-2 border-[#141415] flex items-center justify-center text-[#ffaa00]">
                 <Server className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-white">Active Mod Configuration</h2>
-                <p className="text-xs text-slate-400">Read from config/mc-webdashboard.json</p>
+                <h2 className="text-sm font-heading text-white">MOD SERVER PROPERTIES</h2>
+                <p className="text-xs font-mono text-[#aaaaaa]">Configuration from mc-webdashboard.json</p>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-mono font-semibold">
+            <span className="px-2 py-0.5 bg-[#1e3816] text-[#55ff55] border border-[#11240c] text-[10px] font-heading">
               RUNNING
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div className="p-3.5 rounded-xl bg-dark-950/50 border border-white/5 space-y-1">
-              <p className="text-slate-500">Web Dashboard Host</p>
-              <p className="font-mono font-bold text-white text-sm">0.0.0.0 (All interfaces)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
+            <div className="p-3 bg-[#1a1a1b] border-2 border-[#141415] space-y-1">
+              <p className="text-[#888888]">HTTP BIND HOST</p>
+              <p className="text-white font-bold">0.0.0.0 (All interfaces)</p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-dark-950/50 border border-white/5 space-y-1">
-              <p className="text-slate-500">HTTP & WebSocket Port</p>
-              <p className="font-mono font-bold text-white text-sm">{window.location.port || '10019'}</p>
+            <div className="p-3 bg-[#1a1a1b] border-2 border-[#141415] space-y-1">
+              <p className="text-[#888888]">HTTP & WEBSOCKET PORT</p>
+              <p className="text-white font-bold">{window.location.port || '10019'}</p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-dark-950/50 border border-white/5 space-y-1">
-              <p className="text-slate-500">Session Expiration</p>
-              <p className="font-mono font-bold text-white text-sm">1440 minutes (24 hours)</p>
+            <div className="p-3 bg-[#1a1a1b] border-2 border-[#141415] space-y-1">
+              <p className="text-[#888888]">CONSOLE LOG BUFFER</p>
+              <p className="text-white font-bold">500 entries</p>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-dark-950/50 border border-white/5 space-y-1">
-              <p className="text-slate-500">Log History Buffer Size</p>
-              <p className="font-mono font-bold text-white text-sm">500 entries</p>
+            <div className="p-3 bg-[#1a1a1b] border-2 border-[#141415] space-y-1">
+              <p className="text-[#888888]">SESSION TIMEOUT</p>
+              <p className="text-white font-bold">1440 minutes (24 hours)</p>
             </div>
           </div>
 
           {/* Module Feature Flags */}
           <div>
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Feature Modules</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <h3 className="text-xs font-heading text-[#d0d1d4] uppercase tracking-wider mb-2">
+              ACTIVE FEATURE MODULES
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               {[
-                { name: 'Player Tracking', desc: 'Real-time coords, inv, stats' },
-                { name: 'Metrics Collector', desc: '1s rolling telemetry buffer' },
-                { name: 'Chat Tracking', desc: 'In-game chat audit & send' },
-                { name: 'Command Tracking', desc: 'Admin command logging' },
-                { name: 'LuckPerms Integration', desc: 'Groups, weights, prefixes' },
-                { name: 'Activity Feed', desc: 'Real-time server lifecycle' },
+                { name: 'Whitelist Management', desc: 'Add-only server whitelist control' },
+                { name: 'Console Execution', desc: 'Privileged command execution for sudo' },
+                { name: 'Live Chat Feed', desc: 'Bi-directional synchronized in-game chat' },
+                { name: 'Player Tracking', desc: 'Real-time coordinates and telemetry' },
+                { name: 'Metrics Collector', desc: '1s rolling TPS and MSPT telemetry' },
+                { name: 'LuckPerms Integration', desc: 'Group hierarchy & permissions' },
               ].map((mod) => (
-                <div key={mod.name} className="p-3 rounded-xl bg-dark-950/40 border border-white/5 space-y-1">
+                <div key={mod.name} className="p-2.5 bg-[#1a1a1b] border border-[#272728] space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">{mod.name}</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="text-xs font-heading text-white">{mod.name}</span>
+                    <span className="w-2 h-2 bg-[#55ff55] border border-black" />
                   </div>
-                  <p className="text-[11px] text-slate-400">{mod.desc}</p>
+                  <p className="text-[10px] font-mono text-[#888888]">{mod.desc}</p>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Platform Information */}
-          <div className="pt-4 border-t border-white/5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-            <div>
-              <p className="text-slate-500">Minecraft</p>
-              <p className="font-bold text-white font-mono mt-0.5">{serverInfo?.minecraftVersion || '26.2'}</p>
+          <div className="pt-3 border-t border-[#242425] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+            <div className="p-2 bg-[#1a1a1b] border border-[#272728]">
+              <p className="text-[#888888] text-[10px]">MINECRAFT</p>
+              <p className="text-white font-bold font-mono">{serverInfo?.minecraftVersion || '26.2'}</p>
             </div>
-            <div>
-              <p className="text-slate-500">Java Version</p>
-              <p className="font-bold text-white font-mono mt-0.5">{serverInfo?.javaVersion || '25'}</p>
+            <div className="p-2 bg-[#1a1a1b] border border-[#272728]">
+              <p className="text-[#888888] text-[10px]">JAVA RUNTIME</p>
+              <p className="text-white font-bold font-mono">{serverInfo?.javaVersion || '25'}</p>
             </div>
-            <div>
-              <p className="text-slate-500">Fabric Loader</p>
-              <p className="font-bold text-white font-mono mt-0.5">{serverInfo?.fabricLoaderVersion || '0.19.3'}</p>
+            <div className="p-2 bg-[#1a1a1b] border border-[#272728]">
+              <p className="text-[#888888] text-[10px]">FABRIC LOADER</p>
+              <p className="text-white font-bold font-mono">{serverInfo?.fabricLoaderVersion || '0.19.3'}</p>
             </div>
-            <div>
-              <p className="text-slate-500">Embedded Server</p>
-              <p className="font-bold text-white font-mono mt-0.5">Javalin 6.4.0</p>
+            <div className="p-2 bg-[#1a1a1b] border border-[#272728]">
+              <p className="text-[#888888] text-[10px]">WEB ENGINE</p>
+              <p className="text-white font-bold font-mono">Javalin 6.4.0</p>
             </div>
           </div>
         </div>

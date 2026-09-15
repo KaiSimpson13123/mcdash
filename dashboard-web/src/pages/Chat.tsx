@@ -5,10 +5,9 @@ import {
   Search,
   Download,
   Trash2,
-  RefreshCw,
   Palette,
 } from 'lucide-react';
-import { useWebSocketData, ActivityItem } from '../contexts/WebSocketContext';
+import { useWebSocketData } from '../contexts/WebSocketContext';
 import { api } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { FormattedText } from '../components/FormattedText';
@@ -33,14 +32,13 @@ const COLOR_PALETTE = [
   { code: '&f', name: 'White', bg: '#ffffff', text: '#000000' },
   { code: '&l', name: 'Bold', bg: '#334155', text: '#ffffff', label: 'B' },
   { code: '&o', name: 'Italic', bg: '#334155', text: '#ffffff', label: 'I' },
-  { code: '&r', name: 'Reset', bg: '#1e293b', text: '#94a3b8', label: 'Reset' },
+  { code: '&r', name: 'Reset', bg: '#1e293b', text: '#ffffff', label: 'R' },
 ];
 
 interface ChatMessage {
   id: number;
   timestamp: string;
   sender: string;
-  prefix?: string;
   message: string;
 }
 
@@ -53,57 +51,86 @@ export const Chat: React.FC = () => {
   const [sending, setSending] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  // Load chat items from activity history
+  // Helper to parse activity items into ChatMessage
+  const parseActivityMessage = (a: any): ChatMessage => {
+    let sender = a.title || 'Server';
+    if (sender.startsWith('Chat: ')) {
+      sender = sender.replace('Chat: ', '');
+    }
+    return {
+      id: a.id || Date.now() + Math.random(),
+      timestamp: a.timestamp || new Date().toISOString(),
+      sender,
+      message: a.description || '',
+    };
+  };
+
+  // Load chat items from activity history on mount
   useEffect(() => {
     api.getActivity({ limit: 100, category: 'CHAT' })
       .then((acts) => {
-        if (acts) {
-          const mapped: ChatMessage[] = acts.map((a: any) => ({
-            id: a.id,
-            timestamp: a.timestamp,
-            sender: a.title.replace('Chat: ', ''),
-            message: a.description,
-          }));
+        if (acts && Array.isArray(acts)) {
+          const mapped: ChatMessage[] = acts.map(parseActivityMessage);
           setMessages(mapped.reverse());
         }
       })
       .catch((e) => console.error('Failed to load chat history', e));
   }, []);
 
-  // Listen for real-time CHAT activity events
+  // Listen for real-time CHAT activity events via WebSocket
   useEffect(() => {
     const latest = liveActivity[0];
     if (latest && latest.category === 'CHAT') {
-      const msg: ChatMessage = {
-        id: latest.id,
-        timestamp: latest.timestamp,
-        sender: latest.title.replace('Chat: ', ''),
-        message: latest.description,
-      };
+      const parsed = parseActivityMessage(latest);
       setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
+        // Prevent duplicate messages by id or identical recent content & sender
+        if (prev.some((m) => m.id === parsed.id)) return prev;
+        const last = prev[prev.length - 1];
+        if (last && last.sender === parsed.sender && last.message === parsed.message && Math.abs(Date.now() - new Date(parsed.timestamp).getTime()) < 3000) {
+          return prev;
+        }
+        return [...prev, parsed];
       });
     }
   }, [liveActivity]);
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages]);
 
+  // Handle sending message from dashboard to Minecraft server
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!outgoingText.trim()) return;
+    const textToSend = outgoingText.trim();
+    if (!textToSend) return;
 
     setSending(true);
     try {
-      await api.sendChatMessage(outgoingText.trim());
+      const res = await api.sendChatMessage(textToSend);
       addToast('success', 'Message broadcasted to server');
+
+      // Optimistically add to messages immediately so user sees it right away!
+      const optimisticMsg: ChatMessage = {
+        id: Date.now(),
+        timestamp: res?.timestamp || new Date().toISOString(),
+        sender: res?.sender || '§c[WebDashboard]',
+        message: res?.message || textToSend,
+      };
+
+      setMessages((prev) => {
+        // Avoid duplicate if websocket was faster
+        if (prev.some((m) => m.message === optimisticMsg.message && m.sender.includes('WebDashboard'))) {
+          return prev;
+        }
+        return [...prev, optimisticMsg];
+      });
+
       setOutgoingText('');
-    } catch (e: any) {
-      addToast('error', e.message || 'Failed to send message');
+    } catch (err: any) {
+      addToast('error', err.message || 'Failed to send message');
     } finally {
       setSending(false);
     }
@@ -115,7 +142,7 @@ export const Chat: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'minecraft-chat-export.txt';
+    a.download = 'minecraft-chat.txt';
     a.click();
     URL.revokeObjectURL(url);
     addToast('info', 'Chat history exported');
@@ -128,82 +155,80 @@ export const Chat: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-6 select-none animate-fadeIn">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#2e2f30] border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#48494a,inset_-2px_-2px_0_#222223] p-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
-              <MessageSquare className="w-8 h-8 text-brand-400" />
-              Live Server Chat
+            <h1 className="text-2xl font-heading tracking-wide text-white flex items-center gap-2">
+              <MessageSquare className="w-6 h-6 text-[#55ffff]" />
+              LIVE SERVER CHAT
             </h1>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono">
-              Live Feed
+            <span className="px-2 py-0.5 text-[10px] font-heading bg-[#1e3816] text-[#55ff55] border border-[#11240c]">
+              SYNCHRONIZED FEED
             </span>
           </div>
-          <p className="text-sm text-slate-400 mt-1">
-            Real-time in-game communication feed, formatted player tags, and server broadcast capability.
+          <p className="text-xs font-mono text-[#aaaaaa] mt-1">
+            Real-time in-game communication feed, formatted player badges, and server broadcasting.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={handleExport}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5 text-xs font-semibold transition-all"
+            className="mc-btn px-3 py-1.5 text-xs"
           >
             <Download className="w-3.5 h-3.5" />
-            Export Chat
+            EXPORT CHAT
           </button>
           <button
             onClick={() => setMessages([])}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5 text-xs font-semibold transition-all"
+            className="mc-btn px-3 py-1.5 text-xs"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Clear
+            CLEAR
           </button>
         </div>
       </div>
 
       {/* Chat Container */}
-      <div className="glass-card rounded-2xl border border-white/5 overflow-hidden flex flex-col h-[650px] shadow-2xl">
+      <div className="bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] flex flex-col h-[650px]">
         {/* Search header inside card */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between gap-4 bg-dark-950/40">
+        <div className="p-3 border-b-2 border-[#222223] flex items-center justify-between gap-4 bg-[#242425]">
           <div className="relative w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#888888] absolute left-2.5 top-2.5" />
             <input
               type="text"
               placeholder="Search chat messages..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-dark-950 border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500 transition-colors"
+              className="form-input pl-8 py-1.5 text-xs h-8"
             />
           </div>
-          <span className="text-xs text-slate-500 font-mono">{filteredMessages.length} messages</span>
+          <span className="text-xs text-[#aaaaaa] font-mono">{filteredMessages.length} messages</span>
         </div>
 
         {/* Message Log */}
-        <div ref={chatScrollRef} className="flex-1 p-6 overflow-y-auto space-y-3 bg-dark-950/60 font-sans">
+        <div ref={chatScrollRef} className="flex-1 p-4 overflow-y-auto space-y-2 bg-[#141415] font-mono text-xs shadow-[inset_3px_3px_0_#0a0a0b]">
           {filteredMessages.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-slate-500 text-sm italic">
-              No chat messages yet. Chat messages from in-game players will appear here in real-time.
+            <div className="h-full flex items-center justify-center text-[#777777] text-xs italic">
+              No chat messages recorded yet. Player and dashboard messages will stream here in real time.
             </div>
           ) : (
-            filteredMessages.map((msg) => (
+            filteredMessages.map((msg, idx) => (
               <div
-                key={msg.id}
-                className="p-3 rounded-xl bg-dark-900/60 border border-white/5 hover:border-white/10 transition-colors space-y-1 group"
+                key={msg.id || idx}
+                className="p-2 bg-[#1e1e1f] border border-[#272728] shadow-[inset_1px_1px_0_#2b2b2c] space-y-1"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-sm flex items-center gap-1.5">
-                      <FormattedText text={msg.sender} />
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-mono">
+                  <span className="font-heading text-white text-xs">
+                    <FormattedText text={msg.sender} />
+                  </span>
+                  <span className="text-[10px] text-[#777777] font-mono">
                     {formatTime(msg.timestamp)}
                   </span>
                 </div>
-                <div className="text-sm text-slate-200 pl-1 font-medium break-words">
+                <div className="text-xs text-[#e0e0e0] pl-1 break-words font-mono">
                   <FormattedText text={msg.message} />
                 </div>
               </div>
@@ -213,19 +238,19 @@ export const Chat: React.FC = () => {
 
         {/* Live Color Preview */}
         {outgoingText.trim() && (
-          <div className="px-4 py-2 bg-dark-900/80 border-t border-white/5 flex items-center gap-2 text-xs">
-            <span className="text-slate-500 font-mono flex-shrink-0">Preview:</span>
-            <div className="font-medium text-slate-200 truncate">
+          <div className="px-3 py-1.5 bg-[#252526] border-t-2 border-[#1e1e1f] flex items-center gap-2 text-xs font-mono">
+            <span className="text-[#888888]">Broadcast Preview:</span>
+            <div className="text-white truncate">
               <FormattedText text={`§c[WebDashboard] §f${outgoingText}`} />
             </div>
           </div>
         )}
 
         {/* Color Palette Toolbar */}
-        <div className="px-4 py-2 bg-dark-950 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto">
-          <div className="flex items-center gap-1 text-[11px] text-slate-500 font-semibold uppercase tracking-wider mr-1 flex-shrink-0">
-            <Palette className="w-3.5 h-3.5 text-brand-400" />
-            <span>Colors:</span>
+        <div className="px-3 py-2 bg-[#242425] border-t-2 border-[#1e1e1f] flex items-center gap-1.5 overflow-x-auto">
+          <div className="flex items-center gap-1 text-[11px] font-heading text-[#aaaaaa] uppercase mr-2 flex-shrink-0">
+            <Palette className="w-3.5 h-3.5 text-[#ffaa00]" />
+            <span>COLOR CODES:</span>
           </div>
           {COLOR_PALETTE.map((chip) => (
             <button
@@ -233,7 +258,7 @@ export const Chat: React.FC = () => {
               type="button"
               onClick={() => setOutgoingText((prev) => prev + chip.code)}
               title={`${chip.name} (${chip.code})`}
-              className="px-2 py-0.5 rounded text-[11px] font-mono font-bold transition-transform hover:scale-110 active:scale-95 flex-shrink-0 border border-white/10 shadow-sm"
+              className="px-2 py-0.5 text-[10px] font-heading flex-shrink-0 border border-black shadow-[inset_1px_1px_0_rgba(255,255,255,0.4)] transition-none hover:scale-110 active:scale-95"
               style={{ backgroundColor: chip.bg, color: chip.text }}
             >
               {chip.label || chip.code}
@@ -242,25 +267,25 @@ export const Chat: React.FC = () => {
         </div>
 
         {/* Broadcast input form */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-white/5 bg-dark-950/80 flex items-center gap-3">
-          <div className="px-3 py-2 rounded-xl bg-brand-500/10 text-brand-400 border border-brand-500/20 text-xs font-bold font-mono uppercase">
-            [Dashboard]
+        <form onSubmit={handleSendMessage} className="p-3 border-t-4 border-[#141415] bg-[#2e2f30] flex items-center gap-2">
+          <div className="px-2.5 py-1.5 bg-[#1e1e1f] text-[#55ff55] border-2 border-[#141415] font-heading text-xs">
+            [CHAT]
           </div>
           <input
             type="text"
-            placeholder="Send broadcast message to Minecraft server (supports &a, &b, &c color codes)..."
+            placeholder="Type message to broadcast to Minecraft server (supports &a, &c color codes)..."
             value={outgoingText}
             onChange={(e) => setOutgoingText(e.target.value)}
             disabled={sending}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-dark-900 border border-white/10 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-brand-500 transition-colors"
+            className="form-input flex-1 text-xs"
           />
           <button
             type="submit"
             disabled={sending || !outgoingText.trim()}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-sm font-semibold shadow-lg shadow-brand-500/20 transition-all"
+            className="button button-primary px-4 py-2 text-xs flex-shrink-0 flex items-center gap-1.5"
           >
-            <Send className="w-4 h-4" />
-            Send
+            <Send className="w-3.5 h-3.5" />
+            {sending ? 'SENDING...' : 'BROADCAST'}
           </button>
         </form>
       </div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Lock, User, Server, AlertCircle, ArrowRight } from 'lucide-react';
+import { Lock, User, Server, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
@@ -15,7 +15,11 @@ export const Login: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (isLoading) {
-    return <div className="text-center text-slate-400">Loading...</div>;
+    return (
+      <div className="text-center font-heading text-lg text-white">
+        LOADING SERVER DASHBOARD...
+      </div>
+    );
   }
 
   if (isSetupRequired) {
@@ -48,53 +52,60 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="glass-panel p-8 rounded-3xl shadow-2xl border border-white/10">
-      <div className="flex flex-col items-center text-center mb-8">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-500 to-accent-cyan flex items-center justify-center text-white shadow-xl shadow-brand-500/20 mb-4">
-          <Server className="w-7 h-7" />
+    <div className="card p-6 bg-[#313233] border-4 border-[#141415] shadow-[inset_3px_3px_0_#48494a,inset_-3px_-3px_0_#1e1e1f] select-none">
+      <div className="flex flex-col items-center text-center mb-6">
+        <div className="w-14 h-14 bg-[#3c8527] border-2 border-[#141415] shadow-[inset_2px_2px_0_#5db53b,inset_-2px_-2px_0_#1d4d13] flex items-center justify-center text-white mb-3">
+          <Server className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">Server Dashboard</h2>
-        <p className="text-sm text-slate-400 mt-1">Sign in to manage your Minecraft server</p>
+        <h2 className="text-xl font-heading text-white tracking-wider">
+          SERVER DASHBOARD
+        </h2>
+        <p className="text-xs font-mono text-[#aaaaaa] mt-1">
+          Authenticate to manage Minecraft 26.2 Server
+        </p>
       </div>
 
       {errorMsg && (
-        <div className="mb-6 p-3.5 rounded-xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-xs flex items-center space-x-2.5">
-          <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
+        <div className="mb-4 p-3 bg-[#421414] border-2 border-[#ff5555] text-[#ff5555] text-xs font-mono flex items-center space-x-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+        <div className="form-group mb-3">
+          <label className="form-label text-xs font-heading text-[#d0d1d4] uppercase">
             Username
           </label>
           <div className="relative">
-            <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+            <User className="w-4 h-4 text-[#888888] absolute left-3 top-3 pointer-events-none" />
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="admin"
+              placeholder="admin or sudo"
               required
-              className="glass-input w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
+              className="form-input pl-9 text-xs"
             />
           </div>
+          <span className="text-[10px] text-[#888888] font-mono mt-1 block">
+            Tip: Log in as 'sudo' for console command privileges.
+          </span>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+        <div className="form-group mb-4">
+          <label className="form-label text-xs font-heading text-[#d0d1d4] uppercase">
             Password
           </label>
           <div className="relative">
-            <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5 pointer-events-none" />
+            <Lock className="w-4 h-4 text-[#888888] absolute left-3 top-3 pointer-events-none" />
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
               required
-              className="glass-input w-full pl-10 pr-4 py-2.5 rounded-xl text-sm"
+              className="form-input pl-9 text-xs"
             />
           </div>
         </div>
@@ -102,10 +113,9 @@ export const Login: React.FC = () => {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-400 hover:to-brand-500 text-dark-950 font-bold text-sm tracking-wide shadow-lg shadow-brand-500/25 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50"
+          className="button button-primary w-full py-2 text-sm font-heading tracking-wider"
         >
-          <span>{submitting ? 'Authenticating...' : 'Sign In'}</span>
-          <ArrowRight className="w-4 h-4" />
+          {submitting ? 'AUTHENTICATING...' : 'ENTER DASHBOARD'}
         </button>
       </form>
     </div>

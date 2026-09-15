@@ -12,7 +12,7 @@ import {
   Settings,
   Server,
 } from 'lucide-react';
-import { useWebSocketData } from '../contexts/WebSocketContext';
+import { useWebSocketData as useWS } from '../contexts/WebSocketContext';
 
 const NAV_ITEMS = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,63 +20,72 @@ const NAV_ITEMS = [
   { path: '/groups', label: 'Groups', icon: Shield },
   { path: '/world', label: 'World', icon: Globe },
   { path: '/performance', label: 'Performance', icon: Activity },
-  { path: '/logs', label: 'Logs', icon: Terminal },
+  { path: '/logs', label: 'Console / Logs', icon: Terminal },
   { path: '/activity', label: 'Activity', icon: Clock },
-  { path: '/chat', label: 'Chat', icon: MessageSquare },
+  { path: '/chat', label: 'Server Chat', icon: MessageSquare },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 export const Sidebar: React.FC = () => {
-  const { isConnected, liveStats } = useWebSocketData();
+  const { isConnected, liveStats } = useWS();
 
   return (
-    <aside className="w-64 bg-dark-900/90 border-r border-white/5 flex flex-col h-screen fixed left-0 top-0 z-30 backdrop-blur-xl">
+    <aside className="w-64 bg-[#2e2f30] border-r-4 border-[#141415] shadow-[inset_-2px_0_0_#454647] flex flex-col h-screen fixed left-0 top-0 z-30 select-none">
       {/* Brand header */}
-      <div className="p-6 flex items-center space-x-3 border-b border-white/5">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-accent-cyan flex items-center justify-center shadow-lg shadow-brand-500/20 text-white font-bold">
-          <Server className="w-5 h-5" />
+      <div className="p-4 flex items-center space-x-3 border-b-4 border-[#141415] bg-[#242425]">
+        <div className="w-10 h-10 bg-[#3c8527] border-2 border-[#141415] shadow-[inset_2px_2px_0_#5db53b,inset_-2px_-2px_0_#1d4d13] flex items-center justify-center text-white font-bold">
+          <Server className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="font-bold text-base tracking-tight text-white flex items-center gap-1.5">
-            MC-Dashboard
-            <span className="text-[10px] px-1.5 py-0.2 bg-brand-500/10 text-brand-400 border border-brand-500/20 rounded font-mono">26.2</span>
+          <h1 className="font-heading text-sm text-white tracking-wider flex items-center gap-1">
+            MC-DASHBOARD
           </h1>
-          <p className="text-xs text-slate-400 font-medium">Fabric Server Admin</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[10px] px-1 bg-[#1a1a1b] text-[#55ff55] border border-[#141415] font-mono">
+              26.2 FABRIC
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Navigation menu */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-3 space-y-1.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             end={item.path === '/'}
             className={({ isActive }) =>
-              `flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+              `flex items-center space-x-2.5 px-3 py-2 text-xs font-heading tracking-wide transition-none ${
                 isActive
-                  ? 'bg-brand-500/10 text-brand-400 border border-brand-500/20 shadow-sm shadow-brand-500/10'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                  ? 'bg-[#3c8527] text-white border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#4f913c,inset_-2px_-2px_0_#1d4d13]'
+                  : 'bg-[#3b3c3d] text-[#d0d1d4] border border-[#1e1e1f] shadow-[inset_1px_1px_0_#4f5051,inset_-1px_-1px_0_#242526] hover:bg-[#218306] hover:text-white hover:border-white'
               }`
             }
           >
-            <item.icon className="w-4 h-4 transition-transform group-hover:scale-110" />
-            <span>{item.label}</span>
+            <item.icon className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">{item.label}</span>
           </NavLink>
         ))}
       </nav>
 
       {/* Live status footer */}
-      <div className="p-4 border-t border-white/5 bg-dark-950/40">
-        <div className="glass-card p-3 rounded-xl flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <span className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`} />
+      <div className="p-3 border-t-4 border-[#141415] bg-[#242425]">
+        <div className="bg-[#1a1a1b] border-2 border-[#111112] shadow-[inset_2px_2px_0_#0f0f10,inset_-2px_-2px_0_#313233] p-2.5 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span
+              className={`w-3 h-3 border border-black shadow-[inset_1px_1px_0_rgba(255,255,255,0.4)] ${
+                isConnected ? 'bg-[#55ff55]' : 'bg-[#ff5555]'
+              }`}
+            />
             <div>
-              <p className="text-xs font-semibold text-white leading-none">
-                {isConnected ? 'Connected' : 'Reconnecting...'}
+              <p className="text-[11px] font-heading text-white leading-none">
+                {isConnected ? 'ONLINE' : 'CONNECTING...'}
               </p>
-              <p className="text-[10px] text-slate-400 mt-1 font-mono">
-                {liveStats ? `${liveStats.tps.toFixed(1)} TPS · ${liveStats.mspt.toFixed(1)} MSPT` : 'Live Stream'}
+              <p className="text-[10px] text-[#aaaaaa] mt-1 font-mono">
+                {liveStats
+                  ? `${liveStats.tps.toFixed(1)} TPS · ${liveStats.mspt.toFixed(1)} MSPT`
+                  : 'LIVE METRICS'}
               </p>
             </div>
           </div>

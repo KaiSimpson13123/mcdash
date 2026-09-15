@@ -35,7 +35,7 @@ interface GroupData {
   memberCount: number;
 }
 
-const COLORS = ['#38bdf8', '#818cf8', '#a855f7', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
+const COLORS = ['#55ff55', '#55ffff', '#ff5555', '#ffaa00', '#aa00aa', '#ffff55', '#ffffff'];
 
 export const Groups: React.FC = () => {
   const { addToast } = useToast();
@@ -72,7 +72,6 @@ export const Groups: React.FC = () => {
   const hierarchyGroups = [...groups].sort((a, b) => (b.weight || 0) - (a.weight || 0));
 
   // Chart data preparation
-  // Pie chart: only include active slices with count > 0 to prevent Recharts divide-by-zero SVG arc NaN crash
   const pieChartData = Object.entries(distribution)
     .filter(([_, count]) => count > 0)
     .map(([name, count]) => ({
@@ -80,7 +79,6 @@ export const Groups: React.FC = () => {
       count,
     }));
 
-  // Bar chart: shows all loaded groups and their current online member count
   const barChartData = groups.map((g) => ({
     name: g.displayName || g.name,
     count: g.memberCount || 0,
@@ -99,27 +97,36 @@ export const Groups: React.FC = () => {
     );
   }
 
+  const tooltipStyle = {
+    backgroundColor: '#1b1b1b',
+    borderColor: '#3c3c3c',
+    borderRadius: '0px',
+    color: '#ffffff',
+    fontFamily: 'MinecraftRegular, monospace',
+    boxShadow: 'inset 1px 1px 0px #555555, 2px 2px 0px #000000',
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mc-panel p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">LuckPerms Groups</h1>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20">
+            <h1 className="text-2xl font-minecraft text-white">LuckPerms Groups</h1>
+            <span className="px-2.5 py-1 text-xs font-minecraft bg-[#1c1c1c] text-[#55ff55] border-2 border-[#3c3c3c]">
               {groups.length} Configured
             </span>
           </div>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs text-[#a0a0a0] mt-1 font-minecraft">
             Group hierarchy, inheritance trees, prefixes, and online member distributions.
           </p>
         </div>
 
         <button
           onClick={fetchData}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5 text-sm font-medium transition-all"
+          className="mc-btn mc-btn-sm flex items-center gap-1.5 font-minecraft"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
           Refresh
         </button>
       </div>
@@ -127,14 +134,14 @@ export const Groups: React.FC = () => {
       {/* Distribution Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie Chart */}
-        <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
-            <Users className="w-4 h-4 text-brand-400" />
+        <div className="mc-panel p-5 space-y-4">
+          <h2 className="text-base font-minecraft text-white flex items-center gap-2 border-b border-[#1c1c1c] pb-2">
+            <Users className="w-4 h-4 text-emerald-400" />
             Active Player Share
           </h2>
-          <div className="h-64 w-full">
+          <div className="mc-slot p-3 h-64 w-full">
             {pieChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm italic">
+              <div className="h-full flex items-center justify-center text-[#777777] text-xs font-minecraft italic">
                 No online players currently assigned to groups
               </div>
             ) : (
@@ -146,21 +153,14 @@ export const Groups: React.FC = () => {
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={80}
+                    outerRadius={75}
                     label={(entry) => `${entry.name} (${entry.count})`}
                   >
                     {pieChartData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#0f172a',
-                      borderColor: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '0.75rem',
-                      color: '#fff',
-                    }}
-                  />
+                  <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -168,31 +168,24 @@ export const Groups: React.FC = () => {
         </div>
 
         {/* Bar Chart */}
-        <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4">
-          <h2 className="text-base font-bold text-white flex items-center gap-2">
+        <div className="mc-panel p-5 space-y-4">
+          <h2 className="text-base font-minecraft text-white flex items-center gap-2 border-b border-[#1c1c1c] pb-2">
             <GitBranch className="w-4 h-4 text-purple-400" />
             Group Member Breakdown
           </h2>
-          <div className="h-64 w-full">
+          <div className="mc-slot p-3 h-64 w-full">
             {barChartData.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm italic">
+              <div className="h-full flex items-center justify-center text-[#777777] text-xs font-minecraft italic">
                 No groups configured or LuckPerms not loaded
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barChartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} />
-                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#0f172a',
-                      borderColor: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: '0.75rem',
-                      color: '#fff',
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#38bdf8" radius={[6, 6, 0, 0]} />
+                  <CartesianGrid strokeDasharray="2 2" stroke="#2c2c2c" opacity={0.6} />
+                  <XAxis dataKey="name" stroke="#777777" fontSize={10} tickLine={false} />
+                  <YAxis stroke="#777777" fontSize={10} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="count" fill="#55ffff" />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -201,27 +194,27 @@ export const Groups: React.FC = () => {
       </div>
 
       {/* Visual Hierarchy Tree */}
-      <div className="glass-card p-6 rounded-2xl border border-white/5 space-y-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400" />
+      <div className="mc-panel p-5 space-y-4">
+        <h2 className="text-base font-minecraft text-white flex items-center gap-2 border-b border-[#1c1c1c] pb-2">
+          <Sparkles className="w-4 h-4 text-yellow-400" />
           Inheritance & Weight Hierarchy
         </h2>
         <div className="flex flex-col space-y-2">
           {hierarchyGroups.length === 0 ? (
-            <div className="p-6 text-center text-slate-500 text-sm italic bg-dark-950/20 rounded-xl">
+            <div className="p-6 text-center text-[#777777] text-xs font-minecraft italic mc-slot">
               No group hierarchy loaded.
             </div>
           ) : (
             hierarchyGroups.map((grp, idx) => (
               <div
                 key={grp.name}
-                className="flex items-center gap-3 p-3.5 rounded-xl bg-dark-950/40 border border-white/5 hover:border-brand-500/20 transition-all"
-                style={{ marginLeft: `${Math.min(idx * 20, 100)}px` }}
+                className="flex items-center gap-3 p-3 mc-slot hover:border-[#55ff55] transition-all"
+                style={{ marginLeft: `${Math.min(idx * 16, 80)}px` }}
               >
-                <ChevronRight className="w-4 h-4 text-brand-400 flex-shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[#55ff55] flex-shrink-0" />
                 <div className="flex-1 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-white uppercase text-sm">{grp.name}</span>
+                    <span className="font-minecraft text-white uppercase text-xs font-bold">{grp.name}</span>
                     {grp.prefix && (
                       <span className="text-xs">
                         <FormattedText text={grp.prefix} />
@@ -229,14 +222,14 @@ export const Groups: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs">
-                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                  <div className="flex items-center gap-4 text-xs font-minecraft">
+                    <span className="px-2 py-0.5 bg-[#1e1e1e] text-[#aaaaaa] border border-[#333333]">
                       Weight: {grp.weight ?? 0}
                     </span>
-                    <span className="text-slate-400">
-                      Parents: <span className="font-mono text-white">{(grp.parents || []).join(', ') || 'none'}</span>
+                    <span className="text-[#888888]">
+                      Parents: <span className="text-white">{(grp.parents || []).join(', ') || 'none'}</span>
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-brand-500/10 text-brand-400 border border-brand-500/20 font-mono">
+                    <span className="px-2 py-0.5 bg-[#1c1c1c] text-[#55ff55] border border-[#3c3c3c]">
                       {grp.memberCount ?? 0} Online
                     </span>
                   </div>
@@ -248,56 +241,56 @@ export const Groups: React.FC = () => {
       </div>
 
       {/* Search & Groups Table */}
-      <div className="glass-card rounded-2xl border border-white/5 overflow-hidden">
-        <div className="p-4 border-b border-white/5 flex items-center justify-between gap-4">
-          <div className="relative w-72">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <div className="mc-panel p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#1c1c1c]">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-[#888888] absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search groups..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-dark-950 border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500"
+              className="mc-input w-full pl-9 pr-3 py-1 text-xs"
             />
           </div>
-          <span className="text-xs text-slate-400 font-mono">{filteredGroups.length} groups found</span>
+          <span className="text-xs text-[#888888] font-minecraft">{filteredGroups.length} groups found</span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-dark-950/80 text-xs uppercase tracking-wider text-slate-400 border-b border-white/5">
+        <div className="overflow-x-auto border-2 border-[#1c1c1c]">
+          <table className="w-full text-left text-xs font-minecraft">
+            <thead className="bg-[#1c1c1c] text-[#aaaaaa] uppercase tracking-wider border-b-2 border-[#2b2b2b]">
               <tr>
-                <th className="px-6 py-4">Group Name</th>
-                <th className="px-4 py-4">Prefix Preview</th>
-                <th className="px-4 py-4">Weight</th>
-                <th className="px-4 py-4">Parent Groups</th>
-                <th className="px-6 py-4 text-right">Online Members</th>
+                <th className="px-4 py-3">Group Name</th>
+                <th className="px-4 py-3">Prefix Preview</th>
+                <th className="px-4 py-3">Weight</th>
+                <th className="px-4 py-3">Parent Groups</th>
+                <th className="px-4 py-3 text-right">Online Members</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-[#222222] bg-[#242424]">
               {filteredGroups.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-slate-400">
-                    <Shield className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                    <p className="font-medium text-white">No groups found</p>
-                    <p className="text-xs text-slate-500 mt-1">
+                  <td colSpan={5} className="px-4 py-8 text-center text-[#888888]">
+                    <Shield className="w-8 h-8 text-[#555555] mx-auto mb-2" />
+                    <p className="font-minecraft text-white">No groups found</p>
+                    <p className="text-xs text-[#666666] mt-1 font-minecraft">
                       {search ? `No groups matching "${search}"` : 'No LuckPerms groups are loaded on this server.'}
                     </p>
                   </td>
                 </tr>
               ) : (
                 filteredGroups.map((g) => (
-                  <tr key={g.name} className="hover:bg-slate-800/30 transition-colors">
-                    <td className="px-6 py-4 font-bold text-white uppercase">{g.name}</td>
-                    <td className="px-4 py-4">
-                      {g.prefix ? <FormattedText text={g.prefix} /> : <span className="text-slate-500 italic">None</span>}
+                  <tr key={g.name} className="hover:bg-[#2e2e2e] transition-colors">
+                    <td className="px-4 py-3 font-minecraft text-white font-bold uppercase">{g.name}</td>
+                    <td className="px-4 py-3">
+                      {g.prefix ? <FormattedText text={g.prefix} /> : <span className="text-[#666666] italic">None</span>}
                     </td>
-                    <td className="px-4 py-4 font-mono text-xs">{g.weight ?? 0}</td>
-                    <td className="px-4 py-4 font-mono text-xs text-slate-400">
+                    <td className="px-4 py-3 text-[#aaaaaa]">{g.weight ?? 0}</td>
+                    <td className="px-4 py-3 text-[#aaaaaa]">
                       {(g.parents && g.parents.length > 0) ? g.parents.join(', ') : 'None'}
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="inline-block px-2.5 py-1 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20 text-xs font-mono font-bold">
+                    <td className="px-4 py-3 text-right">
+                      <span className="inline-block px-2 py-0.5 bg-[#1c1c1c] text-[#55ff55] border border-[#3c3c3c]">
                         {g.memberCount ?? 0}
                       </span>
                     </td>

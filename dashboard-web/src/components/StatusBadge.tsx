@@ -10,28 +10,28 @@ interface StatusBadgeProps {
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, text, size = 'sm', pulse = false }) => {
   const norm = status.toUpperCase();
 
-  let styles = 'bg-slate-800/80 text-slate-300 border-slate-700/50';
-  let dotColor = 'bg-slate-400';
+  let styles = 'bg-[#3b3c3d] text-[#c6c6c6] border-[#1e1e1f] shadow-[inset_1px_1px_0_#4f5051,inset_-1px_-1px_0_#222223]';
+  let dotColor = 'bg-[#aaaaaa]';
 
   if (['ONLINE', 'SUCCESS', 'INFO', 'SURVIVAL', 'OVERWORLD'].includes(norm)) {
-    styles = 'bg-emerald-950/60 text-emerald-300 border-emerald-500/30';
-    dotColor = 'bg-emerald-400';
+    styles = 'bg-[#1e3816] text-[#55ff55] border-[#11240c] shadow-[inset_1px_1px_0_#386328,inset_-1px_-1px_0_#0a1706]';
+    dotColor = 'bg-[#55ff55]';
   } else if (['WARN', 'WARNING', 'CREATIVE', 'NETHER', 'THE_NETHER'].includes(norm)) {
-    styles = 'bg-amber-950/60 text-amber-300 border-amber-500/30';
-    dotColor = 'bg-amber-400';
+    styles = 'bg-[#47340b] text-[#ffff55] border-[#291e04] shadow-[inset_1px_1px_0_#755610,inset_-1px_-1px_0_#171102]';
+    dotColor = 'bg-[#ffff55]';
   } else if (['ERROR', 'OFFLINE', 'DEAD', 'HARDCORE', 'ADVENTURE'].includes(norm)) {
-    styles = 'bg-rose-950/60 text-rose-300 border-rose-500/30';
-    dotColor = 'bg-rose-400';
+    styles = 'bg-[#421414] text-[#ff5555] border-[#260a0a] shadow-[inset_1px_1px_0_#752323,inset_-1px_-1px_0_#140505]';
+    dotColor = 'bg-[#ff5555]';
   } else if (['DEBUG', 'SPECTATOR', 'END', 'THE_END'].includes(norm)) {
-    styles = 'bg-purple-950/60 text-purple-300 border-purple-500/30';
-    dotColor = 'bg-purple-400';
+    styles = 'bg-[#2b1947] text-[#ff55ff] border-[#180d29] shadow-[inset_1px_1px_0_#522f87,inset_-1px_-1px_0_#0f081a]';
+    dotColor = 'bg-[#ff55ff]';
   }
 
-  const sizeStyles = size === 'sm' ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1 text-sm font-medium';
+  const sizeStyles = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border backdrop-blur-sm font-mono tracking-wide uppercase ${sizeStyles} ${styles}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${dotColor} ${pulse ? 'animate-ping' : ''}`} />
+    <span className={`inline-flex items-center gap-1.5 border font-heading tracking-wide uppercase ${sizeStyles} ${styles}`}>
+      <span className={`w-2 h-2 border border-black shadow-[inset_1px_1px_0_rgba(255,255,255,0.4)] ${dotColor} ${pulse ? 'animate-ping' : ''}`} />
       {text || status}
     </span>
   );
