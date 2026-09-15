@@ -17,6 +17,7 @@ import { FileExplorer } from './pages/FileExplorer';
 import { Settings } from './pages/Settings';
 import { Login } from './pages/Login';
 import { SetupWizard } from './pages/SetupWizard';
+import { RadarMap } from './pages/RadarMap';
 
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { isAuthenticated, isSetupRequired, isLoading } = useAuth();
@@ -43,6 +44,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
   return children;
 };
 
+const SudoRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { isSudo, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  // Stealth: non-sudo users (like admin) are silently redirected to "/" with zero hint
+  if (!isSudo) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 export const App: React.FC = () => {
   return (
     <Routes>
@@ -61,6 +77,14 @@ export const App: React.FC = () => {
         }
       >
         <Route path="/" element={<Dashboard />} />
+        <Route
+          path="/map"
+          element={
+            <SudoRoute>
+              <RadarMap />
+            </SudoRoute>
+          }
+        />
         <Route path="/players" element={<Players />} />
         <Route path="/groups" element={<Groups />} />
         <Route path="/world" element={<World />} />

@@ -12,24 +12,28 @@ import {
   Settings,
   Server,
   FolderOpen,
+  Radio,
 } from 'lucide-react';
 import { useWebSocketData as useWS } from '../contexts/WebSocketContext';
-
-const NAV_ITEMS = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/players', label: 'Players', icon: Users },
-  { path: '/groups', label: 'Groups', icon: Shield },
-  { path: '/world', label: 'World', icon: Globe },
-  { path: '/performance', label: 'Performance', icon: Activity },
-  { path: '/logs', label: 'Console / Logs', icon: Terminal },
-  { path: '/activity', label: 'Activity', icon: Clock },
-  { path: '/chat', label: 'Server Chat', icon: MessageSquare },
-  { path: '/files', label: 'File Explorer', icon: FolderOpen },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
+import { useAuth } from '../contexts/AuthContext';
 
 export const Sidebar: React.FC = () => {
   const { isConnected, liveStats } = useWS();
+  const { isSudo } = useAuth();
+
+  const navItems = [
+    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    ...(isSudo ? [{ path: '/map', label: 'Tactical Radar', icon: Radio, isSudoOnly: true }] : []),
+    { path: '/players', label: 'Players', icon: Users },
+    { path: '/groups', label: 'Groups', icon: Shield },
+    { path: '/world', label: 'World', icon: Globe },
+    { path: '/performance', label: 'Performance', icon: Activity },
+    { path: '/logs', label: 'Console / Logs', icon: Terminal },
+    { path: '/activity', label: 'Activity', icon: Clock },
+    { path: '/chat', label: 'Server Chat', icon: MessageSquare },
+    { path: '/files', label: 'File Explorer', icon: FolderOpen },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ];
 
   return (
     <aside className="w-64 bg-[#2e2f30] border-r-4 border-[#141415] shadow-[inset_-2px_0_0_#454647] flex flex-col h-screen fixed left-0 top-0 z-30 select-none">
@@ -52,21 +56,26 @@ export const Sidebar: React.FC = () => {
 
       {/* Navigation menu */}
       <nav className="flex-1 px-3 py-3 space-y-1.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
             end={item.path === '/'}
             className={({ isActive }) =>
-              `flex items-center space-x-2.5 px-3 py-2 text-xs font-heading tracking-wide transition-none ${
+              `flex items-center justify-between px-3 py-2 text-xs font-heading tracking-wide transition-none ${
                 isActive
                   ? 'bg-[#3c8527] text-white border-2 border-[#1e1e1f] shadow-[inset_2px_2px_0_#4f913c,inset_-2px_-2px_0_#1d4d13]'
                   : 'bg-[#3b3c3d] text-[#d0d1d4] border border-[#1e1e1f] shadow-[inset_1px_1px_0_#4f5051,inset_-1px_-1px_0_#242526] hover:bg-[#218306] hover:text-white hover:border-white'
               }`
             }
           >
-            <item.icon className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">{item.label}</span>
+            <div className="flex items-center space-x-2.5 truncate">
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </div>
+            {item.isSudoOnly && (
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#10b981]" title="Classified Sudo Module" />
+            )}
           </NavLink>
         ))}
       </nav>

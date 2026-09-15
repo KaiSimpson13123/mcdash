@@ -43,6 +43,7 @@ public class WebDashboardServer {
     private WhitelistController whitelistController;
     private ConsoleController consoleController;
     private FileController fileController;
+    private MapController mapController;
 
     public WebDashboardServer(
             ConfigManager configManager,
@@ -81,6 +82,7 @@ public class WebDashboardServer {
         if (chatController != null) chatController.setServer(server);
         if (whitelistController != null) whitelistController.setServer(server);
         if (consoleController != null) consoleController.setServer(server);
+        if (mapController != null) mapController.setServer(server);
     }
 
     public synchronized void start() {
@@ -148,12 +150,16 @@ public class WebDashboardServer {
             fileController = new FileController(activityTrackerService);
             fileController.registerRoutes(app);
 
+            mapController = new MapController(playerTrackerService, activityTrackerService);
+            mapController.registerRoutes(app);
+
             if (this.server != null) {
                 serverController.setServer(this.server);
                 luckPermsController.setServer(this.server);
                 chatController.setServer(this.server);
                 whitelistController.setServer(this.server);
                 consoleController.setServer(this.server);
+                mapController.setServer(this.server);
             }
 
             app.start(config.getHost(), config.getPort());

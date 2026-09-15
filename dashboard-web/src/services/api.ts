@@ -220,4 +220,78 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ command }),
     }),
+
+  // Tactical Radar & Map (Sudo exclusive)
+  getMapData: (dimension?: string) => {
+    const q = dimension ? `?dimension=${encodeURIComponent(dimension)}` : '';
+    return request<MapDataResponse>(`/api/sudo/map${q}`);
+  },
+  getMapWaypoints: () => request<MapWaypoint[]>('/api/sudo/map/waypoints'),
+  createMapWaypoint: (payload: { name: string; x: number; z: number; dimension: string; color?: string }) =>
+    request<MapWaypoint>('/api/sudo/map/waypoints', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteMapWaypoint: (id: string) =>
+    request<{ success: boolean; message: string }>(`/api/sudo/map/waypoints/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+  teleportOnMap: (payload: { uuid: string; x: number; y: number; z: number; dimension: string }) =>
+    request<{ success: boolean; message: string }>('/api/sudo/map/teleport', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
+
+export interface MapDimension {
+  id: string;
+  name: string;
+  loadedChunks: number;
+  playerCount: number;
+  worldBorder: {
+    centerX: number;
+    centerZ: number;
+    size: number;
+  };
+  spawn: {
+    x: number;
+    y: number;
+    z: number;
+  };
+}
+
+export interface MapPlayer {
+  uuid: string;
+  username: string;
+  dimension: string;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+  health: number;
+  maxHealth: number;
+  gameMode: string;
+  ping: number;
+  isOp: boolean;
+  chunkX: number;
+  chunkZ: number;
+}
+
+export interface MapWaypoint {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  dimension: string;
+  color: string;
+  isSystem?: boolean;
+}
+
+export interface MapDataResponse {
+  selectedDimension: string;
+  dimensions: MapDimension[];
+  players: MapPlayer[];
+  waypoints: MapWaypoint[];
+}
+
